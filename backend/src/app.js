@@ -36,6 +36,15 @@ app.use(morgan("dev"));
 // Expose uploaded files under `/uploads` URL path.
 app.use("/uploads", express.static(uploadsDir));
 
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    message: "Server is running",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Mount feature routes under the `/api` namespace.
 app.use("/api/auth", authRoutes);
 app.use("/api/jobs", jobRoutes);
