@@ -1,0 +1,6 @@
+company,role,status,appliedDate,source,priority,location,salary,recruiterName,recruiterEmail,jobUrl,followUpDate,interviewDate,tags,notes
+Google,SDE Intern,Applied,2026-06-01,LinkedIn,High,Bangalore,50000,Sarah Chen,sarah@google.com,https://careers.google.com/12345,2026-06-10,2026-06-15,"React;Node","Applied through referral"
+Amazon,SDE-1,OA,2026-06-03,Referral,Medium,Hyderabad,1800000,John Smith,john@amazon.com,https://amazon.jobs/67890,2026-06-12,2026-06-18,"Java;AWS","OA cleared - 3 questions"
+Microsoft,Frontend Developer,Screening,2026-05-20,Career Page,High,Noida,2200000,Priya Sharma,priya@microsoft.com,https://careers.microsoft.com/11111,,2026-06-20,"React;TypeScript","Phone screen scheduled"
+Stripe,Backend Engineer,Applied,2026-06-05,LinkedIn,Medium,Remote,,,,,,Node.js;MongoDB,
+Meta,Full Stack Developer,Technical,2026-05-15,Referral,High,Gurugram,2500000,Amit Kumar,amit@meta.com,https://metacareers.com/22222,2026-06-08,2026-06-12,"React;Node.js;GraphQL","Strong referral from team lead"

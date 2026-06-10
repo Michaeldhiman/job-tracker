@@ -7,7 +7,7 @@ const historySchema = new mongoose.Schema(
     status: {
       type: String,
       required: true,
-      enum: ["Applied", "Interview", "Offer", "Rejected"]
+      enum: ["Wishlist", "Applied", "OA", "Screening", "Technical", "HR", "Offer", "Rejected"]
     },
     at: {
       type: Date,
@@ -32,20 +32,57 @@ const jobSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Company"
+    },
     role: {
       type: String,
+      required: true,
       trim: true
     },
     status: {
       type: String,
-      enum: ["Applied", "Interview", "Offer", "Rejected"],
+      enum: ["Wishlist", "Applied", "OA", "Screening", "Technical", "HR", "Offer", "Rejected"],
       default: "Applied"
     },
     appliedDate: {
       type: Date
     },
+    source: {
+      type: String,
+      enum: ["LinkedIn", "Naukri", "Referral", "Career Page", "Indeed", "Internshala", "Other"],
+      default: "Other"
+    },
+    priority: {
+      type: String,
+      enum: ["Low", "Medium", "High"],
+      default: "Medium"
+    },
+    location: {
+      type: String,
+      trim: true
+    },
     salary: {
       type: Number
+    },
+    recruiterName: {
+      type: String,
+      trim: true
+    },
+    recruiterEmail: {
+      type: String,
+      trim: true
+    },
+    jobUrl: {
+      type: String,
+      trim: true
+    },
+    followUpDate: {
+      type: Date
+    },
+    interviewDate: {
+      type: Date
     },
     // Free-form labels like "remote", "onsite", "senior", etc.
     tags: [
@@ -59,14 +96,26 @@ const jobSchema = new mongoose.Schema(
       type: String,
       trim: true
     },
+    resumeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Resume"
+    },
     notes: {
       type: String,
       trim: true
     },
-    // List of status changes (e.g. Applied → Interview → Offer).
+    // List of status changes (e.g. Applied → Technical → Offer).
     history: {
       type: [historySchema],
       default: []
+    },
+    interviewReminderSent: {
+      type: Boolean,
+      default: false
+    },
+    followUpReminderSent: {
+      type: Boolean,
+      default: false
     }
   },
   {
@@ -74,6 +123,11 @@ const jobSchema = new mongoose.Schema(
     timestamps: true
   }
 );
+
+// Indexes for faster queries
+jobSchema.index({ userId: 1, status: 1 });
+jobSchema.index({ userId: 1, company: 1 });
+jobSchema.index({ userId: 1, appliedDate: -1 });
 
 // Pre-save hook that ensures the `history` array stays in sync with `status`.
 jobSchema.pre("save", function handleHistory(next) {
@@ -96,5 +150,4 @@ jobSchema.pre("save", function handleHistory(next) {
 const Job = mongoose.model("Job", jobSchema);
 
 export default Job;
-
 

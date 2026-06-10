@@ -1,6 +1,7 @@
 // Job routes: CRUD operations, stats, resume upload, and CSV export.
 import { Router } from "express";
 import auth from "../middleware/auth.js";
+import { pagination } from "../middleware/pagination.js";
 import {
   createJobHandler,
   getJobsHandler,
@@ -10,8 +11,10 @@ import {
   uploadResumeHandler,
   getMonthlyStatsHandler,
   getSummaryStatsHandler,
-  exportJobsHandler
+  exportJobsHandler,
+  importJobsHandler
 } from "../controllers/jobsController.js";
+import { validateRequest, jobSchemaZod } from "../utils/validation.js";
 
 import upload from "../fileUpload/multerConfig.js";
 
@@ -27,15 +30,19 @@ router.get("/stats/summary", getSummaryStatsHandler);
 
 // Export filtered jobs as CSV.
 router.get("/export", exportJobsHandler);
+router.post("/import", upload.single("csv"), importJobsHandler);
 
 // /api/jobs -> create and list operations.
-router.route("/").post(createJobHandler).get(getJobsHandler);
+router
+  .route("/")
+  .post(validateRequest(jobSchemaZod), createJobHandler)
+  .get(pagination, getJobsHandler);
 
 // /api/jobs/:id -> get, update, and delete a single job.
 router
   .route("/:id")
   .get(getJobHandler)
-  .put(updateJobHandler)
+  .put(validateRequest(jobSchemaZod.partial()), updateJobHandler)
   .delete(deleteJobHandler);
 
 // Upload a resume file (field name: "resume") or attach a URL to a job.

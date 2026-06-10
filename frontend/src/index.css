@@ -1,4 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    --color-background: 255 255 255;      /* #ffffff */
+    --color-surface: 244 244 245;         /* zinc-100 */
+    --color-surface-elevated: 228 228 231;/* zinc-200 */
+    --color-primary: 79 70 229;           /* indigo-500 */
+    --color-primary-hover: 67 56 202;     /* indigo-600 */
+    --color-text: 9 9 11;                 /* zinc-950 */
+    --color-text-muted: 113 113 122;      /* zinc-500 */
+    --color-border: rgba(0, 0, 0, 0.1);
+    
+    --color-emerald-500: 16 185 129;
+    --color-rose-500: 244 63 94;
+    --color-amber-500: 245 158 11;
+  }
+
+  .dark {
+    --color-background: 9 9 11;           /* #09090b */
+    --color-surface: 18 18 20;            /* #121214 */
+    --color-surface-elevated: 28 28 31;   /* #1c1c1f */
+    --color-primary: 79 70 229;           /* indigo-500 */
+    --color-primary-hover: 67 56 202;     /* indigo-600 */
+    --color-text: 227 225 236;            /* #e3e1ec */
+    --color-text-muted: 161 161 170;      /* zinc-400 */
+    --color-border: rgba(255, 255, 255, 0.08);
+
+    --color-emerald-500: 16 185 129;
+    --color-rose-500: 244 63 94;
+    --color-amber-500: 245 158 11;
+  }
+
+  html, body {
+    @apply bg-background text-text font-sans antialiased;
+  }
+
+  /* Custom Scrollbar for dark/light mode */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-elevated rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-border);
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-surface/70 backdrop-blur-xl border border-border rounded-xl shadow-glass;
+  }
+  
+  .glass-panel {
+    @apply bg-surface-elevated/80 backdrop-blur-md border border-border;
+  }
+  
+  .input-glass {
+    @apply bg-background/50 border border-border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-text placeholder:text-text-muted;
+  }
+  
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-md font-medium transition-colors border-t border-white/10 shadow-sm flex items-center justify-center gap-2;
+  }
+  
+  .btn-secondary {
+    @apply bg-transparent hover:bg-black/5 dark:hover:bg-white/5 border border-border text-text px-4 py-2 rounded-md font-medium transition-colors flex items-center justify-center gap-2;
+  }
+}

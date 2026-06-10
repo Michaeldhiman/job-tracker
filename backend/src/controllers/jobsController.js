@@ -11,6 +11,9 @@ import {
 } from "../services/jobService.js";
 import { generateCsv } from "../utils/csvUtil.js";
 import { uploadToCloudinary } from "../fileUpload/cloudinary.js";
+import fs from "fs";
+import csvParser from "csv-parser";
+import { Readable } from "stream";
 
 // POST /api/jobs
 // Creates a new job record for the authenticated user.
@@ -27,12 +30,13 @@ export const createJobHandler = async (req, res, next) => {
 // Returns a paginated list of jobs filtered by status/search query params.
 export const getJobsHandler = async (req, res, next) => {
   try {
-    const { status, search, page, limit } = req.query;
+    const { status, search } = req.query;
+    const { page, limit } = req.pagination || { page: 1, limit: 10 };
     const result = await getJobs(req.userId, {
       status,
       search,
-      page: Number(page) || 1,
-      limit: Number(limit) || 10
+      page,
+      limit
     });
     res.json(result);
   } catch (error) {
@@ -154,6 +158,72 @@ export const exportJobsHandler = async (req, res, next) => {
     res.setHeader("Content-Type", "text/csv;charset=utf-8");
     res.setHeader("Content-Disposition", "attachment; filename=jobs.csv");
     res.send(csvWithBom);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/jobs/import
+// Import jobs from CSV
+export const importJobsHandler = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "CSV file is required" });
+    }
+
+    const results = [];
+    const stream = Readable.from(req.file.buffer);
+
+    stream
+      .pipe(csvParser())
+      .on("data", (data) => results.push(data))
+      .on("end", async () => {
+        try {
+          const summary = {
+            totalRows: results.length,
+            successfulImports: 0,
+            failedImports: 0,
+            errors: []
+          };
+
+          for (let i = 0; i < results.length; i++) {
+            const row = results[i];
+            try {
+              // Basic validation
+              if (!row.company || row.company.length < 2) throw new Error("Invalid company");
+              if (!row.role || row.role.length < 2) throw new Error("Invalid role");
+              
+              const payload = {
+                company: row.company,
+                role: row.role,
+                status: row.status || "Applied",
+                appliedDate: row.appliedDate ? new Date(row.appliedDate) : new Date(),
+                source: row.source || "Other",
+                priority: row.priority || "Medium",
+                location: row.location,
+                salary: row.salary ? Number(row.salary) : undefined,
+                recruiterName: row.recruiterName,
+                recruiterEmail: row.recruiterEmail,
+                jobUrl: row.jobUrl,
+                followUpDate: row.followUpDate ? new Date(row.followUpDate) : undefined,
+                interviewDate: row.interviewDate ? new Date(row.interviewDate) : undefined,
+                tags: row.tags ? row.tags.split(";").map(t => t.trim()) : [],
+                notes: row.notes
+              };
+
+              await createJob(req.userId, payload);
+              summary.successfulImports++;
+            } catch (err) {
+              summary.failedImports++;
+              summary.errors.push({ row: i + 2, error: err.message });
+            }
+          }
+
+          res.status(200).json({ success: true, summary });
+        } catch (error) {
+          next(error);
+        }
+      });
   } catch (error) {
     next(error);
   }

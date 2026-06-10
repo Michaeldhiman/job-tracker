@@ -22,7 +22,7 @@ export const createJob = async (userId, payload) => {
 
   const errors = {};
   if (!company) errors.company = "Company is required";
-  if (status && !["Applied", "Interview", "Offer", "Rejected"].includes(status)) {
+  if (status && !["Wishlist", "Applied", "OA", "Screening", "Technical", "HR", "Offer", "Rejected"].includes(status)) {
     errors.status = "Invalid status";
   }
 

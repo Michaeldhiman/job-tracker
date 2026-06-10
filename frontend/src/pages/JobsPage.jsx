@@ -1,218 +1,104 @@
 import { useEffect, useState } from 'react';
-import { getJobs, createJob, updateJob, deleteJob, exportCsv } from '../api/jobsApi.js';
-import JobFilters from '../components/jobs/JobFilters.jsx';
-import JobTable from '../components/jobs/JobTable.jsx';
-import JobForm from '../components/jobs/JobForm.jsx';
+import { searchJobs } from '../api/jobsApi.js';
 import ErrorAlert from '../components/feedback/ErrorAlert.jsx';
 import Loader from '../components/feedback/Loader.jsx';
 import Button from '../components/ui/Button.jsx';
-import useJobsFilters from '../hooks/useJobsFilters.js';
+import KanbanBoard from '../components/jobs/KanbanBoard.jsx';
+import { Plus, Search, Filter } from 'lucide-react';
+import Input from '../components/ui/Input.jsx';
+import AddJobModal from '../components/jobs/AddJobModal.jsx';
+import JobDetailsModal from '../components/jobs/JobDetailsModal.jsx';
 
 function JobsPage() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [editingJob, setEditingJob] = useState(null);
-  const [exporting, setExporting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAddJob, setShowAddJob] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null);
 
-  const { filters, setFilter, clearFilters, filteredJobs } = useJobsFilters(jobs);
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await searchJobs({ q: searchTerm, limit: 1000 });
+      setJobs(data.results || []);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to load jobs.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchJobs = async () => {
-      try {
-        setLoading(true);
-        setError('');
-        const data = await getJobs({ limit: 1000 });
-        setJobs(data.jobs || []);
-      } catch (err) {
-        const message =
-          err.response?.data?.message ||
-          err.message ||
-          'Failed to load jobs. Please try again.';
-        setError(message);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Basic debounce for search
+    const delayDebounceFn = setTimeout(() => {
+      fetchJobs();
+    }, 300);
 
-    fetchJobs();
-  }, []);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
 
-  const handleCreate = () => {
-    setEditingJob(null);
-    setShowForm(true);
-  };
-
-  const handleEdit = (job) => {
-    setEditingJob(job);
-    setShowForm(true);
-  };
-
-  const handleDelete = async (job) => {
-    const confirmed = window.confirm('Delete this job?');
-    if (!confirmed) return;
-
-    try {
-      await deleteJob(job._id);
-      setJobs((prev) => prev.filter((item) => item._id !== job._id));
-    } catch (err) {
-      const message =
-        err.response?.data?.message ||
-        err.message ||
-        'Failed to delete job. Please try again.';
-      setError(message);
-    }
-  };
-
-  const handleFormSubmit = async (formData, setFieldError, setServerError) => {
-    try {
-      if (editingJob) {
-        const response = await updateJob(editingJob._id, formData);
-        if (response.job) {
-          setJobs((prev) =>
-            prev.map((job) => (job._id === editingJob._id ? response.job : job))
-          );
-        }
-      } else {
-        const response = await createJob(formData);
-        if (response.job) {
-          setJobs((prev) => [response.job, ...prev]);
-        }
-      }
-
-      setShowForm(false);
-      setEditingJob(null);
-    } catch (err) {
-      const data = err.response?.data;
-      if (data?.message) {
-        setServerError(data.message);
-      } else {
-        setServerError(err.message || 'Something went wrong.');
-      }
-
-      if (data?.errors) {
-        Object.entries(data.errors).forEach(([field, message]) => {
-          setFieldError(field, { type: 'server', message });
-        });
-      }
-    }
-  };
-
-  const handleJobUpdated = (updatedJob) => {
-    if (!updatedJob?._id) return;
-    setJobs((prev) => prev.map((job) => (job._id === updatedJob._id ? updatedJob : job)));
-  };
-
-  const handleResumeError = (message) => {
-    setError(message);
-  };
-
-  const handleExportCsv = async () => {
-    const params = {};
-    if (filters.status && filters.status !== 'all') {
-      params.status = filters.status;
-    }
-    if (filters.search?.trim()) {
-      params.search = filters.search.trim();
-    }
-
-    try {
-      setExporting(true);
-      setError('');
-      const blob = await exportCsv(params);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'jobs.csv';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      const message =
-        err.response?.data?.message || err.message || 'Failed to export CSV. Please try again.';
-      setError(message);
-    } finally {
-      setExporting(false);
-    }
+  const handleJobClick = (job) => {
+    setSelectedJob(job);
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="h-full flex flex-col space-y-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shrink-0">
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">💼 Jobs</h1>
-          <p className="mt-2 text-slate-600">Manage and filter your job applications.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-text">Kanban Board</h1>
+          <p className="text-sm text-text-muted mt-1">Manage and track your job applications through the pipeline.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-          <Button onClick={handleExportCsv} disabled={exporting} className="w-full sm:w-auto flex items-center justify-center gap-2">
-            {exporting ? '📥 Downloading...' : '📥 Export CSV'}
+        <div className="flex items-center gap-3">
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search jobs..."
+              className="pl-9 h-9"
+            />
+          </div>
+          <Button variant="secondary" className="h-9 px-3">
+            <Filter className="w-4 h-4 mr-2" /> Filter
           </Button>
-          <Button onClick={handleCreate} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700">
-            ➕ Add job
+          <Button className="h-9" onClick={() => setShowAddJob(true)}>
+            <Plus className="w-4 h-4 mr-2" /> Add Job
           </Button>
         </div>
       </div>
 
       <ErrorAlert message={error} />
 
-      {showForm && (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-lg p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              {editingJob ? '✏️ Edit job' : '➕ Add a job'}
-            </h2>
-            <button
-              type="button"
-              className="text-slate-400 hover:text-slate-600 transition text-2xl"
-              onClick={() => {
-                setShowForm(false);
-                setEditingJob(null);
-              }}
-            >
-              ✕
-            </button>
-          </div>
-
-          <JobForm
-            initialData={editingJob}
-            onSubmit={handleFormSubmit}
-            onCancel={() => {
-              setShowForm(false);
-              setEditingJob(null);
-            }}
-          />
-        </div>
-      )}
-
-      <JobFilters filters={filters} onChange={setFilter} onClear={clearFilters} />
-
-      <div className="min-h-[200px]">
-        {loading ? (
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
-            <Loader text="Loading jobs..." />
-          </div>
-        ) : !jobs.length ? (
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-8 text-center space-y-3">
-            <p className="text-lg font-semibold text-gray-900">No jobs yet</p>
-            <p className="text-sm text-gray-600">
-              No jobs yet — click “Add job” to create your first one.
-            </p>
-            <div className="flex justify-center">
-              <Button onClick={handleCreate}>Add your first job</Button>
-            </div>
+      <div className="flex-1 min-h-0 bg-background/50 rounded-lg">
+        {loading && !jobs.length ? (
+          <div className="h-full flex items-center justify-center">
+            <Loader text="Loading pipeline..." />
           </div>
         ) : (
-          <JobTable
-            jobs={filteredJobs}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onJobUpdated={handleJobUpdated}
-            onError={handleResumeError}
-          />
+          <KanbanBoard initialJobs={jobs} onJobClick={handleJobClick} />
         )}
       </div>
+
+      <AddJobModal 
+        isOpen={showAddJob} 
+        onClose={() => setShowAddJob(false)} 
+        onSuccess={() => {
+          setShowAddJob(false);
+          fetchJobs();
+        }} 
+      />
+
+      <JobDetailsModal
+        isOpen={!!selectedJob}
+        job={selectedJob}
+        onClose={() => setSelectedJob(null)}
+        onSuccess={() => {
+          setSelectedJob(null);
+          fetchJobs();
+        }}
+      />
     </div>
   );
 }

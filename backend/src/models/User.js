@@ -28,6 +28,26 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["user", "admin"],
       default: "user"
+    },
+    theme: {
+      type: String,
+      enum: ["light", "dark", "system"],
+      default: "system"
+    },
+    emailNotifs: {
+      type: Boolean,
+      default: true
+    },
+    interviewReminders: {
+      type: Boolean,
+      default: true
+    },
+    weeklyDigest: {
+      type: Boolean,
+      default: false
+    },
+    lastWeeklyDigestSentAt: {
+      type: Date
     }
   },
   {

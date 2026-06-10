@@ -7,7 +7,11 @@ import JobsPage from './pages/JobsPage.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 import AppLayout from './components/layout/AppLayout.jsx';
-
+import AnalyticsPage from './pages/AnalyticsPage.jsx';
+import CalendarPage from './pages/CalendarPage.jsx';
+import CompaniesPage from './pages/CompaniesPage.jsx';
+import ResumesPage from './pages/ResumesPage.jsx';
+import SettingsPage from './pages/SettingsPage.jsx';
 // Protected route wrapper
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -53,6 +57,56 @@ function AppRoutes() {
             <ProtectedRoute>
               <AppLayout>
                 <JobsPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <AnalyticsPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <CalendarPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/companies"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <CompaniesPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/resumes"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <ResumesPage />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <SettingsPage />
               </AppLayout>
             </ProtectedRoute>
           }

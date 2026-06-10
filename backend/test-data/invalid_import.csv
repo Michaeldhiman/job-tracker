@@ -1,0 +1,8 @@
+company,role,status,appliedDate,source,priority,location,salary
+,Backend Dev,Applied,2026-06-01,LinkedIn,High,Remote,100000
+Google,,Applied,2026-06-01,LinkedIn,Medium,Bangalore,50000
+Amazon,SDE,InvalidStatus,2026-06-01,Referral,High,Hyderabad,70000
+Microsoft,Frontend Dev,Applied,not-a-date,Career Page,Medium,Noida,60000
+Flipkart,SDE Intern,Applied,2026-06-01,LinkedIn,High,Bangalore,25000
+Flipkart,SDE Intern,Applied,2026-06-01,LinkedIn,High,Bangalore,25000
+X,Y,Applied,2026-06-01,Other,Low,Remote,0

@@ -2,7 +2,9 @@
 import {
   registerUser,
   loginUser,
-  getCurrentUser
+  getCurrentUser,
+  updateProfile,
+  deleteAccount
 } from "../services/authService.js";
 
 // Helper to create a standardized validation error object.
@@ -69,6 +71,24 @@ export const getProfile = async (req, res, next) => {
 
     const user = await getCurrentUser(req.userId);
     res.json({ user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProfileHandler = async (req, res, next) => {
+  try {
+    const user = await updateProfile(req.userId, req.body);
+    res.json({ success: true, user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteAccountHandler = async (req, res, next) => {
+  try {
+    await deleteAccount(req.userId);
+    res.json({ success: true });
   } catch (error) {
     next(error);
   }

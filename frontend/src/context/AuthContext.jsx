@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { login as loginApi, register as registerApi } from '../api/authApi.js';
 import { setLogoutHandler } from './authState.js';
+import { useTheme } from './ThemeContext.jsx';
 
 const AuthContext = createContext(null);
 
@@ -9,6 +10,14 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { setTheme } = useTheme();
+
+  // Sync theme when user state changes
+  useEffect(() => {
+    if (user?.theme) {
+      setTheme(user.theme);
+    }
+  }, [user, setTheme]);
 
   // Initialize from localStorage on mount
   useEffect(() => {
@@ -112,6 +121,11 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
   };
 
+  const updateUser = (userData) => {
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+  };
+
   const value = {
     user,
     token,
@@ -120,6 +134,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

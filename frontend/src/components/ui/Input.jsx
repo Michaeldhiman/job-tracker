@@ -1,23 +1,28 @@
 import { forwardRef } from 'react';
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-const Input = forwardRef(({ label, error, ...props }, ref) => {
+const Input = forwardRef(({ className, type, label, error, ...props }, ref) => {
   return (
-    <div>
+    <div className="flex flex-col gap-1.5 w-full">
       {label && (
-        <label className="block text-sm font-semibold text-white mb-2">
+        <label className="text-sm font-medium text-text">
           {label}
         </label>
       )}
       <input
+        type={type}
+        className={twMerge(
+          clsx(
+            "flex h-10 w-full rounded-md border border-border bg-background/50 px-3 py-2 text-sm text-text transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50",
+            error && "border-rose-500 focus-visible:ring-rose-500",
+            className
+          )
+        )}
         ref={ref}
-        className={`w-full px-4 py-3 border-2 rounded-xl shadow-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400 backdrop-blur-sm ${
-          error ? 'border-red-500 bg-red-50 hover:bg-red-100' : 'border-slate-300 bg-white/70 hover:bg-white hover:border-blue-400'
-        }`}
         {...props}
       />
-      {error && (
-        <p className="mt-2 text-sm font-medium text-red-600">❌ {error}</p>
-      )}
+      {error && <span className="text-xs text-rose-500 mt-1">{error}</span>}
     </div>
   );
 });
@@ -25,4 +30,3 @@ const Input = forwardRef(({ label, error, ...props }, ref) => {
 Input.displayName = 'Input';
 
 export default Input;
-

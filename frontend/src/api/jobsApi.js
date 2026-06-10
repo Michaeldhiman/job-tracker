@@ -44,4 +44,46 @@ export const exportCsv = async (params = {}) => {
   return response.data;
 };
 
+export const importCsv = async (formData) => {
+  const response = await axiosClient.post('/api/jobs/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
 
+export const getAnalytics = async () => {
+  const response = await axiosClient.get('/api/analytics');
+  return response.data;
+};
+
+export const searchJobs = async (params = {}) => {
+  const response = await axiosClient.get('/api/search', { params });
+  return response.data;
+};
+
+export const getCompanies = async (params = {}) => {
+  const response = await axiosClient.get('/api/companies', { params });
+  return response.data;
+};
+
+export const getResumes = async (params = {}) => {
+  const response = await axiosClient.get('/api/resumes', { params });
+  return response.data;
+};
+
+export const uploadResumeDirect = async (formData) => {
+  const response = await axiosClient.post('/api/resumes', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
+export const deleteResume = async (id) => {
+  const response = await axiosClient.delete(`/api/resumes/${id}`);
+  return response.data;
+};
+
+export const getActivityLogs = async (params = {}) => {
+  const response = await axiosClient.get('/api/activity-logs', { params });
+  return response.data;
+};
