@@ -25,7 +25,21 @@ if (process.env.FRONTEND_URL) {
 }
 
 const corsOptions = {
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+    if (!origin) return callback(null, true);
+    
+    // Check allowed origins with normalized trailing slashes
+    const isAllowed = allowedOrigins.some(allowed => {
+      return allowed.replace(/\/$/, "") === origin.replace(/\/$/, "");
+    });
+
+    if (isAllowed || origin.endsWith(".vercel.app") || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS Error: Origin ${origin} not allowed`));
+    }
+  },
   credentials: true
 };
 
