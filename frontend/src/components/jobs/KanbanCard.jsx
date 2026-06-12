@@ -8,7 +8,7 @@ import { PIPELINE_STATUSES } from '../../utils/constants.js';
 
 const STATUSES = PIPELINE_STATUSES;
 
-const KanbanCardContent = memo(({ job, isDragging, isOverlay, onJobClick, onStatusChange, listeners, attributes, setNodeRef, style }) => {
+export const KanbanCardContent = memo(({ job, isDragging, isOverlay, onJobClick, onStatusChange, listeners, attributes, setNodeRef, style }) => {
   const handleStatusSelect = (e) => {
     e.stopPropagation();
     if (onStatusChange) {
@@ -28,10 +28,10 @@ const KanbanCardContent = memo(({ job, isDragging, isOverlay, onJobClick, onStat
       {...listeners}
       onClick={handleClick}
       className={clsx(
-        "bg-surface border border-border p-3 rounded-lg shadow-sm cursor-grab active:cursor-grabbing transition-all duration-250 ease-out group relative",
+        "w-full bg-surface border border-border p-3 rounded-lg shadow-sm cursor-grab active:cursor-grabbing group relative",
         !isDragging && !isOverlay && "hover:-translate-y-0.5 hover:shadow-md hover:border-primary/50",
         isDragging && "opacity-30 border-primary",
-        isOverlay && "scale-105 rotate-2 shadow-2xl border-primary bg-surface cursor-grabbing z-50"
+        isOverlay && "scale-105 rotate-2 shadow-2xl border-primary bg-surface cursor-grabbing z-[999]"
       )}
     >
       <div className="flex justify-between items-start mb-2">
@@ -80,7 +80,7 @@ const KanbanCardContent = memo(({ job, isDragging, isOverlay, onJobClick, onStat
 
 KanbanCardContent.displayName = 'KanbanCardContent';
 
-const KanbanCard = memo(({ job, onJobClick, onStatusChange, isOverlay }) => {
+const KanbanCard = memo(({ job, onJobClick, onStatusChange }) => {
   const {
     setNodeRef,
     attributes,
@@ -97,18 +97,9 @@ const KanbanCard = memo(({ job, onJobClick, onStatusChange, isOverlay }) => {
   });
 
   const style = {
-    transition: transition || 'transform 250ms ease',
+    transition,
     transform: CSS.Transform.toString(transform),
   };
-
-  if (isOverlay) {
-    return (
-      <KanbanCardContent 
-        job={job} 
-        isOverlay={true} 
-      />
-    );
-  }
 
   return (
     <KanbanCardContent

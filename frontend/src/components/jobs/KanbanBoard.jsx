@@ -15,22 +15,12 @@ import {
   sortableKeyboardCoordinates 
 } from '@dnd-kit/sortable';
 import KanbanColumn from './KanbanColumn.jsx';
-import KanbanCard from './KanbanCard.jsx';
+import KanbanCard, { KanbanCardContent } from './KanbanCard.jsx';
 import { updateJob } from '../../api/jobsApi.js';
 
 import { PIPELINE_STATUSES } from '../../utils/constants.js';
 
 const COLUMNS = PIPELINE_STATUSES.map(status => ({ id: status, title: status }));
-
-const dropAnimationConfig = {
-  sideEffects: defaultDropAnimationSideEffects({
-    styles: {
-      active: {
-        opacity: '0.4',
-      },
-    },
-  }),
-};
 
 export default function KanbanBoard({ initialJobs, onJobClick }) {
   const [jobs, setJobs] = useState(initialJobs || []);
@@ -101,15 +91,13 @@ export default function KanbanBoard({ initialJobs, onJobClick }) {
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-    if (!over) {
-      setActiveJob(null);
-      return;
-    }
-
     const activeId = active.id;
-    const isActiveTask = active.data.current?.type === 'Task';
-    if (!isActiveTask) {
-      setActiveJob(null);
+    const isActiveTask = active?.data?.current?.type === 'Task';
+    
+    // Clear overlay state immediately for snappy UI
+    setActiveJob(null);
+
+    if (!over || !isActiveTask) {
       return;
     }
 
@@ -125,7 +113,9 @@ export default function KanbanBoard({ initialJobs, onJobClick }) {
         setJobs(prevJobs => prevJobs.map(j => j._id === activeId ? { ...j, status: originalStatus } : j));
       }
     }
-    
+  };
+
+  const handleDragCancel = () => {
     setActiveJob(null);
   };
 
@@ -147,12 +137,28 @@ export default function KanbanBoard({ initialJobs, onJobClick }) {
     }
   }, []);
 
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    const checkIsDesktop = () => {
+      setIsDesktop(window.matchMedia('(min-width: 1024px)').matches);
+    };
+    
+    // Initial check
+    checkIsDesktop();
+
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    mediaQuery.addEventListener('change', checkIsDesktop);
+    
+    return () => mediaQuery.removeEventListener('change', checkIsDesktop);
+  }, []);
+
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)] w-full gap-4">
-      {/* Mobile Tab Bar */}
-      <div className="lg:hidden flex overflow-x-auto custom-scrollbar pb-2 gap-2 snap-x px-1">
-        {COLUMNS.map(col => {
-          const count = columnsWithJobs.find(c => c.id === col.id)?.jobs.length || 0;
+    <div className="h-full flex flex-col pt-4 overflow-hidden">
+      {/* Status Tabs for Mobile */}
+      <div className="lg:hidden flex overflow-x-auto gap-2 pb-3 mb-2 px-1 snap-x">
+        {columnsWithJobs.map(col => {
+          const count = col.jobs.length;
           return (
             <button
               key={col.id}
@@ -172,35 +178,36 @@ export default function KanbanBoard({ initialJobs, onJobClick }) {
           onDragStart={handleDragStart}
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
         >
-          {/* Desktop View: All Columns */}
-          <div className="hidden lg:flex gap-4 h-full">
-            {columnsWithJobs.map(column => (
-              <KanbanColumn 
-                key={column.id} 
-                column={column} 
-                jobs={column.jobs} 
-                onJobClick={onJobClick}
-                onStatusChange={handleStatusChange}
-              />
-            ))}
-          </div>
-
-          {/* Mobile View: Single Column */}
-          <div className="flex lg:hidden h-full w-full">
-            {columnsWithJobs.filter(c => c.id === activeTab).map(column => (
-              <KanbanColumn 
-                key={column.id} 
-                column={column} 
-                jobs={column.jobs} 
-                onJobClick={onJobClick}
-                onStatusChange={handleStatusChange}
-              />
-            ))}
-          </div>
+          {isDesktop ? (
+            <div className="flex gap-4 h-full">
+              {columnsWithJobs.map(column => (
+                <KanbanColumn 
+                  key={column.id} 
+                  column={column} 
+                  jobs={column.jobs} 
+                  onJobClick={onJobClick}
+                  onStatusChange={handleStatusChange}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex h-full w-full">
+              {columnsWithJobs.filter(c => c.id === activeTab).map(column => (
+                <KanbanColumn 
+                  key={column.id} 
+                  column={column} 
+                  jobs={column.jobs} 
+                  onJobClick={onJobClick}
+                  onStatusChange={handleStatusChange}
+                />
+              ))}
+            </div>
+          )}
           
-          <DragOverlay dropAnimation={dropAnimationConfig}>
-            {activeJob ? <KanbanCard job={activeJob} isOverlay={true} /> : null}
+          <DragOverlay dropAnimation={null}>
+            {activeJob ? <KanbanCardContent job={activeJob} isOverlay={true} /> : null}
           </DragOverlay>
         </DndContext>
       </div>
