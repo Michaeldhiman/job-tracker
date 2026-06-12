@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { searchJobs } from '../api/jobsApi.js';
 import ErrorAlert from '../components/feedback/ErrorAlert.jsx';
-import Loader from '../components/feedback/Loader.jsx';
+import { KanbanSkeleton } from '../components/feedback/Skeletons.jsx';
 import Button from '../components/ui/Button.jsx';
 import KanbanBoard from '../components/jobs/KanbanBoard.jsx';
 import { Plus, Search, Filter } from 'lucide-react';
 import Input from '../components/ui/Input.jsx';
 import AddJobModal from '../components/jobs/AddJobModal.jsx';
 import JobDetailsModal from '../components/jobs/JobDetailsModal.jsx';
+import JobFilters from '../components/jobs/JobFilters.jsx';
+import { twMerge } from 'tailwind-merge';
 
 function JobsPage() {
   const [jobs, setJobs] = useState([]);
@@ -16,6 +18,34 @@ function JobsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddJob, setShowAddJob] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [jobToEdit, setJobToEdit] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    status: 'all',
+    priority: 'all',
+    source: 'all',
+  });
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      status: 'all',
+      priority: 'all',
+      source: 'all',
+    });
+  };
+
+  const filteredJobs = useMemo(() => {
+    return jobs.filter((job) => {
+      const matchesStatus = filters.status === 'all' ? true : job.status === filters.status;
+      const matchesPriority = filters.priority === 'all' ? true : job.priority === filters.priority;
+      const matchesSource = filters.source === 'all' ? true : job.source === filters.source;
+      return matchesStatus && matchesPriority && matchesSource;
+    });
+  }, [jobs, filters]);
 
   const fetchJobs = async () => {
     try {
@@ -47,7 +77,7 @@ function JobsPage() {
     <div className="h-full flex flex-col space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shrink-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-text">Kanban Board</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-text">Applications</h1>
           <p className="text-sm text-text-muted mt-1">Manage and track your job applications through the pipeline.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -60,7 +90,14 @@ function JobsPage() {
               className="pl-9 h-9"
             />
           </div>
-          <Button variant="secondary" className="h-9 px-3">
+          <Button 
+            variant="secondary" 
+            className={twMerge(
+              "h-9 px-3 transition-all", 
+              (showFilters || filters.status !== 'all' || filters.priority !== 'all' || filters.source !== 'all') && "bg-primary/15 border-primary/40 text-primary hover:bg-primary/25"
+            )}
+            onClick={() => setShowFilters(!showFilters)}
+          >
             <Filter className="w-4 h-4 mr-2" /> Filter
           </Button>
           <Button className="h-9" onClick={() => setShowAddJob(true)}>
@@ -71,21 +108,32 @@ function JobsPage() {
 
       <ErrorAlert message={error} />
 
-      <div className="flex-1 min-h-0 bg-background/50 rounded-lg">
+      {showFilters && (
+        <JobFilters 
+          filters={filters} 
+          onChange={handleFilterChange} 
+          onClear={clearFilters} 
+        />
+      )}
+
+      <div className="flex-1 min-h-0 bg-background/50 rounded-lg overflow-hidden">
         {loading && !jobs.length ? (
-          <div className="h-full flex items-center justify-center">
-            <Loader text="Loading pipeline..." />
-          </div>
+          <KanbanSkeleton />
         ) : (
-          <KanbanBoard initialJobs={jobs} onJobClick={handleJobClick} />
+          <KanbanBoard initialJobs={filteredJobs} onJobClick={handleJobClick} />
         )}
       </div>
 
       <AddJobModal 
         isOpen={showAddJob} 
-        onClose={() => setShowAddJob(false)} 
+        jobToEdit={jobToEdit}
+        onClose={() => {
+          setShowAddJob(false);
+          setJobToEdit(null);
+        }} 
         onSuccess={() => {
           setShowAddJob(false);
+          setJobToEdit(null);
           fetchJobs();
         }} 
       />
@@ -94,6 +142,11 @@ function JobsPage() {
         isOpen={!!selectedJob}
         job={selectedJob}
         onClose={() => setSelectedJob(null)}
+        onEdit={(job) => {
+          setSelectedJob(null);
+          setJobToEdit(job);
+          setShowAddJob(true);
+        }}
         onSuccess={() => {
           setSelectedJob(null);
           fetchJobs();

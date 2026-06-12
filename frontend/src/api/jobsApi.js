@@ -83,6 +83,11 @@ export const deleteResume = async (id) => {
   return response.data;
 };
 
+export const renameResume = async (id, name) => {
+  const response = await axiosClient.put(`/api/resumes/${id}`, { name });
+  return response.data;
+};
+
 export const getActivityLogs = async (params = {}) => {
   const response = await axiosClient.get('/api/activity-logs', { params });
   return response.data;

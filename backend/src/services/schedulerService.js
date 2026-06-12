@@ -1,156 +1,200 @@
-import Job from "../models/Job.js";
+import cron from "node-cron";
+import Event from "../models/Event.js";
 import User from "../models/User.js";
 import ActivityLog from "../models/ActivityLog.js";
-import { sendEmail } from "./emailService.js";
+import { sendInterview24HourReminder, sendInterview1HourReminder } from "./emailService.js";
+import { config } from "../config/runtimeConfig.js";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Main background task checks.
- * Scans DB for upcoming interviews, follow-ups, and weekly digests.
+ * Combine an Event's `date` field (midnight UTC) with its `startTime` string
+ * (e.g. "14:30") to produce a precise interview start Date object in local time.
  */
-export const checkRemindersAndDigests = async () => {
-  const now = new Date();
-  const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+const getInterviewStart = (event) => {
+  const base = new Date(event.date);
+  const [hours, minutes] = event.startTime.split(":").map(Number);
+  // Build a proper local datetime: use the event date's year/month/day
+  const dt = new Date(
+    base.getFullYear(),
+    base.getMonth(),
+    base.getDate(),
+    hours,
+    minutes,
+    0,
+    0
+  );
+  return dt;
+};
 
-  console.log(`[Scheduler] Checking background tasks at ${now.toISOString()}`);
+/** Format a Date as "June 15, 2026" */
+const formatDate = (d) =>
+  d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
+/** Format a time string "HH:MM" as "10:00 AM" */
+const formatTime = (timeStr) => {
+  const [h, m] = timeStr.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+};
+
+const minutes = (value) => value * 60 * 1000;
+
+// ─── Core Jobs ────────────────────────────────────────────────────────────────
+
+/**
+ * Scan events with an interview starting in the next 24 hours (±15-min window)
+ * and dispatch the 24-hour reminder email + in-app activity log entry.
+ */
+export const check24HourReminders = async () => {
+  const now = new Date();
+  // Target window: 23h 45min → 24h from now (catches any tick in the 15-min cron cycle)
+  const halfWindow = config.scheduler.reminderWindowMinutes;
+  const lead = config.scheduler.reminder24HourLeadMinutes;
+  const windowStart = new Date(now.getTime() + minutes(lead - halfWindow));
+  const windowEnd = new Date(now.getTime() + minutes(lead + halfWindow));
 
   try {
-    // ─── 1. INTERVIEW REMINDERS ──────────────────────────────────────────────
-    // Find jobs with interviewDate within the next 24 hours that haven't had reminders sent
-    const upcomingInterviews = await Job.find({
-      interviewDate: { $gt: now, $lte: next24Hours },
-      interviewReminderSent: { $ne: true }
+    // Fetch events in the candidate date range whose reminder hasn't been sent
+    const events = await Event.find({
+      date:             { $gte: new Date(windowStart.toDateString()), $lte: new Date(windowEnd.toDateString()) },
+      reminder24hSent:  { $ne: true },
     });
 
-    for (const job of upcomingInterviews) {
-      const user = await User.findById(job.userId);
-      if (user && user.interviewReminders) {
-        // Dispatch Email
-        const formattedDate = new Date(job.interviewDate).toLocaleString();
-        await sendEmail({
-          to: user.email,
-          subject: `📅 Interview Reminder: ${job.role} at ${job.company}`,
-          text: `Hi ${user.name},\n\nThis is a 24-hour reminder that you have an interview scheduled for the role of "${job.role}" at ${job.company} on ${formattedDate}.\n\nGood luck with your preparation!\n\nBest,\nObsidian CRM Team`,
-          html: `<p>Hi <strong>${user.name}</strong>,</p><p>This is a 24-hour reminder that you have an interview scheduled for the role of <strong>${job.role}</strong> at <strong>${job.company}</strong> on <strong>${formattedDate}</strong>.</p><p>Good luck with your preparation!</p><br/><p>Best,<br/>Obsidian CRM Team</p>`
-        });
+    for (const event of events) {
+      const interviewStart = getInterviewStart(event);
 
-        // Add In-App Notification (ActivityLog)
-        await ActivityLog.create({
-          userId: user._id,
-          jobId: job._id,
-          action: "Interview Reminder",
-          details: `Upcoming interview for ${job.role} at ${job.company} on ${new Date(job.interviewDate).toLocaleDateString()}`
-        });
+      // Precise time check: is the interview between 23h45min and 24h15min from now?
+      if (interviewStart < windowStart || interviewStart > windowEnd) continue;
 
-        // Mark as sent
-        job.interviewReminderSent = true;
-        await job.save();
-      }
-    }
+      const user = await User.findById(event.userId);
+      if (!user || !user.emailNotifs || !user.interviewReminders) continue;
 
-    // ─── 2. FOLLOW-UP REMINDERS ──────────────────────────────────────────────
-    // Find jobs with followUpDate within the next 24 hours that haven't had reminders sent
-    const upcomingFollowUps = await Job.find({
-      followUpDate: { $gt: now, $lte: next24Hours },
-      followUpReminderSent: { $ne: true }
-    });
+      const dateLabel = formatDate(interviewStart);
+      const timeLabel = formatTime(event.startTime);
+      const company   = event.company || "the company";
+      const role      = event.title;
 
-    for (const job of upcomingFollowUps) {
-      const user = await User.findById(job.userId);
-      if (user && user.emailNotifs) {
-        // Dispatch Email
-        const formattedDate = new Date(job.followUpDate).toLocaleDateString();
-        await sendEmail({
-          to: user.email,
-          subject: `🔔 Follow-up Reminder: ${job.role} at ${job.company}`,
-          text: `Hi ${user.name},\n\nThis is a reminder to follow up on your application for "${job.role}" at ${job.company}. Your follow-up is scheduled for ${formattedDate}.\n\nBest,\nObsidian CRM Team`,
-          html: `<p>Hi <strong>${user.name}</strong>,</p><p>This is a reminder to follow up on your application for <strong>${job.role}</strong> at <strong>${job.company}</strong>. Your follow-up is scheduled for <strong>${formattedDate}</strong>.</p><br/><p>Best,<br/>Obsidian CRM Team</p>`
-        });
-
-        // Add In-App Notification (ActivityLog)
-        await ActivityLog.create({
-          userId: user._id,
-          jobId: job._id,
-          action: "Follow-up Reminder",
-          details: `Time to follow up on application for ${job.role} at ${job.company}`
-        });
-
-        // Mark as sent
-        job.followUpReminderSent = true;
-        await job.save();
-      }
-    }
-
-    // ─── 3. WEEKLY DIGEST ───────────────────────────────────────────────────
-    // Find users with weeklyDigest enabled who haven't received a digest in the last 7 days
-    const usersForDigest = await User.find({
-      weeklyDigest: true,
-      $or: [
-        { lastWeeklyDigestSentAt: { $exists: false } },
-        { lastWeeklyDigestSentAt: { $lte: sevenDaysAgo } }
-      ]
-    });
-
-    for (const user of usersForDigest) {
-      // Gather stats for the past week
-      const [newJobs, upcomingInts, offers, rejections] = await Promise.all([
-        Job.countDocuments({ userId: user._id, createdAt: { $gte: sevenDaysAgo } }),
-        Job.countDocuments({ userId: user._id, interviewDate: { $gte: now } }),
-        Job.countDocuments({ userId: user._id, status: "Offer", updatedAt: { $gte: sevenDaysAgo } }),
-        Job.countDocuments({ userId: user._id, status: "Rejected", updatedAt: { $gte: sevenDaysAgo } })
-      ]);
-
-      await sendEmail({
+      await sendInterview24HourReminder({
         to: user.email,
-        subject: `📈 Obsidian CRM: Your Weekly Job Search Summary`,
-        text: `Hi ${user.name},\n\nHere is your job search summary for the past week:\n\n- New applications added: ${newJobs}\n- Upcoming interviews: ${upcomingInts}\n- Offers received: ${offers}\n- Rejections: ${rejections}\n\nKeep tracking and good luck!\n\nBest,\nObsidian CRM Team`,
-        html: `
-          <p>Hi <strong>${user.name}</strong>,</p>
-          <p>Here is your job search summary for the past week:</p>
-          <ul>
-            <li><strong>New applications added:</strong> ${newJobs}</li>
-            <li><strong>Upcoming interviews:</strong> ${upcomingInts}</li>
-            <li><strong>Offers received:</strong> ${offers}</li>
-            <li><strong>Rejections:</strong> ${rejections}</li>
-          </ul>
-          <p>Keep tracking and good luck!</p>
-          <br/>
-          <p>Best,<br/>Obsidian CRM Team</p>
-        `
+        name: user.name,
+        company,
+        role,
+        date: dateLabel,
+        time: timeLabel,
       });
 
-      // Update sent timestamp
-      user.lastWeeklyDigestSentAt = now;
-      await user.save();
-    }
+      // In-app activity log entry
+      await ActivityLog.create({
+        userId: user._id,
+        jobId:  event.jobId || undefined,
+        action: "Interview Reminder",
+        details: `24-hour reminder: ${role}${company !== "the company" ? ` at ${company}` : ""} — ${dateLabel} at ${timeLabel}`,
+      });
 
-  } catch (error) {
-    console.error("[Scheduler] Error running background tasks:", error);
+      // Mark as sent to prevent duplicate emails
+      event.reminder24hSent = true;
+      await event.save();
+
+      console.log(`[Scheduler] 24h reminder sent → ${user.email} (${role} at ${company})`);
+    }
+  } catch (err) {
+    console.error("[Scheduler] Error in 24h reminder job:", err);
   }
 };
-
-let intervalId = null;
 
 /**
- * Start background scheduler checks.
- * Runs checkRemindersAndDigests immediately, and then at the specified interval.
- * @param {number} intervalMs - Poll interval in milliseconds (default 10 minutes)
+ * Scan events with an interview starting in the next 1 hour (±15-min window)
+ * and dispatch the 1-hour reminder email + in-app activity log entry.
  */
-export const startScheduler = (intervalMs = 10 * 60 * 1000) => {
-  if (intervalId) return;
+export const check1HourReminders = async () => {
+  const now = new Date();
+  // Target window: 45min → 75min from now
+  const halfWindow = config.scheduler.reminderWindowMinutes;
+  const lead = config.scheduler.reminder1HourLeadMinutes;
+  const windowStart = new Date(now.getTime() + minutes(lead - halfWindow));
+  const windowEnd = new Date(now.getTime() + minutes(lead + halfWindow));
 
-  // Run immediate first check
-  checkRemindersAndDigests();
+  try {
+    // Fetch events whose 1h reminder hasn't been sent yet
+    const events = await Event.find({
+      date:            { $gte: new Date(now.toDateString()) },
+      reminder1hSent:  { $ne: true },
+    });
 
-  intervalId = setInterval(checkRemindersAndDigests, intervalMs);
-  console.log(`[Scheduler] Background task runner initialized (running every ${intervalMs / 60 / 1000} mins)`);
+    for (const event of events) {
+      const interviewStart = getInterviewStart(event);
+
+      // Precise time check
+      if (interviewStart < windowStart || interviewStart > windowEnd) continue;
+
+      const user = await User.findById(event.userId);
+      if (!user || !user.emailNotifs || !user.interviewReminders) continue;
+
+      const timeLabel = formatTime(event.startTime);
+      const company   = event.company || "the company";
+      const role      = event.title;
+
+      await sendInterview1HourReminder({
+        to: user.email,
+        name: user.name,
+        company,
+        role,
+        time: timeLabel,
+      });
+
+      // In-app activity log entry
+      await ActivityLog.create({
+        userId: user._id,
+        jobId:  event.jobId || undefined,
+        action: "Interview Reminder",
+        details: `1-hour reminder: ${role}${company !== "the company" ? ` at ${company}` : ""} at ${timeLabel}`,
+      });
+
+      // Mark as sent
+      event.reminder1hSent = true;
+      await event.save();
+
+      console.log(`[Scheduler] 1h reminder sent → ${user.email} (${role} at ${company})`);
+    }
+  } catch (err) {
+    console.error("[Scheduler] Error in 1h reminder job:", err);
+  }
 };
 
-/** Stop the background scheduler checks */
+// ─── Scheduler Lifecycle ──────────────────────────────────────────────────────
+
+let job24h = null;
+let job1h  = null;
+
+/**
+ * Start the background cron scheduler.
+ * Runs both reminder checks every 15 minutes and fires an immediate first pass.
+ */
+export const startScheduler = () => {
+  if (job24h || job1h) return; // prevent double-start
+
+  job24h = cron.schedule(config.scheduler.cronExpression, check24HourReminders, {
+    timezone: config.scheduler.timezone,
+  });
+  job1h = cron.schedule(config.scheduler.cronExpression, check1HourReminders, {
+    timezone: config.scheduler.timezone,
+  });
+
+  console.log(`[Scheduler] Background reminder cron jobs started (${config.scheduler.cronExpression}).`);
+
+  // Immediate first pass so reminders fire on boot without waiting 15 minutes
+  check24HourReminders();
+  check1HourReminders();
+};
+
+/**
+ * Stop the background cron scheduler gracefully.
+ * Called during graceful shutdown or in tests.
+ */
 export const stopScheduler = () => {
-  if (intervalId) {
-    clearInterval(intervalId);
-    intervalId = null;
-    console.log("[Scheduler] Background task runner stopped.");
-  }
+  if (job24h) { job24h.stop(); job24h = null; }
+  if (job1h)  { job1h.stop();  job1h  = null; }
+  console.log("[Scheduler] Background reminder cron jobs stopped.");
 };

@@ -1,4 +1,4 @@
-import { Archiver } from 'archiver';
+import { ZipArchive } from 'archiver';
 import axios from 'axios';
 import Job from '../models/Job.js';
 import Company from '../models/Company.js';
@@ -52,7 +52,7 @@ export const exportAllData = async (req, res, next) => {
     const csvWithBom = '\uFEFF' + header + rows;
 
     res.setHeader("Content-Type", "text/csv;charset=utf-8");
-    res.setHeader("Content-Disposition", "attachment; filename=obsidian_crm_data.csv");
+    res.setHeader("Content-Disposition", "attachment; filename=snap_job_data.csv");
     res.send(csvWithBom);
   } catch (error) {
     next(error);
@@ -68,9 +68,9 @@ export const exportResumesZip = async (req, res, next) => {
     }
 
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', 'attachment; filename=obsidian_resumes.zip');
+    res.setHeader('Content-Disposition', 'attachment; filename=snap_job_resumes.zip');
 
-    const archive = new Archiver('zip', {
+    const archive = new ZipArchive({
       zlib: { level: 9 } // Maximum compression
     });
     

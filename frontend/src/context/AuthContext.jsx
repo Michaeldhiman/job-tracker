@@ -19,20 +19,53 @@ export const AuthProvider = ({ children }) => {
     }
   }, [user, setTheme]);
 
-  // Initialize from localStorage on mount
+  // Initialize from URL parameters (for OAuth callback redirect) or localStorage on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    const urlUser = params.get('user');
 
-    if (storedToken && storedUser) {
+    if (urlToken && urlUser) {
       try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(decodeURIComponent(urlUser));
+        
+        // Check remember me preference from Google login callback
+        const rememberMe = sessionStorage.getItem('remember_me') !== 'false';
+        sessionStorage.removeItem('remember_me');
+
+        if (rememberMe) {
+          localStorage.setItem('token', urlToken);
+          localStorage.setItem('user', JSON.stringify(parsedUser));
+        } else {
+          sessionStorage.setItem('token', urlToken);
+          sessionStorage.setItem('user', JSON.stringify(parsedUser));
+        }
+        
+        setToken(urlToken);
+        setUser(parsedUser);
         setIsAuthenticated(true);
+        
+        // Clean URL query parameters to keep address bar clean
+        window.history.replaceState({}, document.title, window.location.pathname);
       } catch (error) {
-        console.error('Error parsing stored user data:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        console.error('Error parsing Google OAuth user data:', error);
+      }
+    } else {
+      const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const storedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
+
+      if (storedToken && storedUser) {
+        try {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
+          setIsAuthenticated(true);
+        } catch (error) {
+          console.error('Error parsing stored user data:', error);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('user');
+        }
       }
     }
     setLoading(false);
@@ -46,12 +79,17 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      const response = await loginApi(credentials);
+      const { rememberMe, ...loginData } = credentials;
+      const response = await loginApi(loginData);
       const { token: newToken, user: userData } = response;
 
-      // Save to localStorage
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(userData));
+      if (rememberMe) {
+        localStorage.setItem('token', newToken);
+        localStorage.setItem('user', JSON.stringify(userData));
+      } else {
+        sessionStorage.setItem('token', newToken);
+        sessionStorage.setItem('user', JSON.stringify(userData));
+      }
 
       // Update state
       setToken(newToken);
@@ -82,7 +120,7 @@ export const AuthProvider = ({ children }) => {
       const response = await registerApi(userData);
       const { token: newToken, user: newUser } = response;
 
-      // Save to localStorage
+      // Registration defaults to persistent login (rememberMe = true)
       localStorage.setItem('token', newToken);
       localStorage.setItem('user', JSON.stringify(newUser));
 
@@ -111,9 +149,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    // Clear localStorage
+    // Clear both localStorage and sessionStorage
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
 
     // Reset state
     setToken(null);
@@ -122,7 +162,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (userData) => {
-    localStorage.setItem('user', JSON.stringify(userData));
+    if (localStorage.getItem('token')) {
+      localStorage.setItem('user', JSON.stringify(userData));
+    } else {
+      sessionStorage.setItem('user', JSON.stringify(userData));
+    }
     setUser(userData);
   };
 

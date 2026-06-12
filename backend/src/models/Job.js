@@ -100,6 +100,10 @@ const jobSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Resume"
     },
+    resumeName: {
+      type: String,
+      trim: true
+    },
     notes: {
       type: String,
       trim: true

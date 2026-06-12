@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getAnalytics } from '../api/jobsApi.js';
-import Loader from '../components/feedback/Loader.jsx';
+import { AnalyticsSkeleton } from '../components/feedback/Skeletons.jsx';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card.jsx';
-import { TrendingUp, TrendingDown, Target, BarChart3, PieChart as PieChartIcon, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, BarChart3, PieChart as PieChartIcon, Activity, FileText } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, Legend
@@ -58,11 +58,7 @@ function AnalyticsPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        <Loader text="Loading analytics..." />
-      </div>
-    );
+    return <AnalyticsSkeleton />;
   }
 
   if (error) {
@@ -136,6 +132,7 @@ function AnalyticsPage() {
   ].filter(s => s.count > 0);
 
   const avgDays = Math.round(data.timeMetrics?.avgDaysToInterview || 0);
+  const resumeStats = data.resumeStats || { totalResumes: 0, totalStorage: 0, mostUsedResume: null, resumeUsage: [] };
 
   const customTooltipStyle = { backgroundColor: '#1c1c1f', borderColor: '#ffffff15', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' };
 

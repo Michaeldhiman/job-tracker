@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import Job from "../models/Job.js";
 import Company from "../models/Company.js";
 import Resume from "../models/Resume.js";
+import { config } from "../config/runtimeConfig.js";
 
 // Shape the user object returned to clients (no password, no internals).
 const sanitizeUser = (user) => ({
@@ -13,7 +14,6 @@ const sanitizeUser = (user) => ({
   theme: user.theme || 'system',
   emailNotifs: user.emailNotifs ?? true,
   interviewReminders: user.interviewReminders ?? true,
-  weeklyDigest: user.weeklyDigest ?? false,
 });
 
 // Helper to generate a signed JWT for a given user ID.
@@ -23,7 +23,7 @@ const generateToken = (userId) => {
   }
 
   return jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d"
+    expiresIn: config.auth.jwtExpiresIn
   });
 };
 
@@ -101,7 +101,6 @@ export const updateProfile = async (userId, payload) => {
   if (payload.theme) user.theme = payload.theme;
   if (payload.emailNotifs !== undefined) user.emailNotifs = payload.emailNotifs;
   if (payload.interviewReminders !== undefined) user.interviewReminders = payload.interviewReminders;
-  if (payload.weeklyDigest !== undefined) user.weeklyDigest = payload.weeklyDigest;
 
   await user.save();
   return sanitizeUser(user);

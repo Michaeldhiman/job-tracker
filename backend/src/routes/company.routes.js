@@ -2,6 +2,7 @@ import { Router } from "express";
 import auth from "../middleware/auth.js";
 import { pagination } from "../middleware/pagination.js";
 import Company from "../models/Company.js";
+import ActivityLog from "../models/ActivityLog.js";
 import { z } from "zod";
 import { validateRequest } from "../utils/validation.js";
 
@@ -20,6 +21,15 @@ const companySchemaZod = z.object({
 router.post("/", validateRequest(companySchemaZod), async (req, res, next) => {
   try {
     const company = await Company.create({ ...req.body, userId: req.userId });
+    try {
+      await ActivityLog.create({
+        userId: req.userId,
+        action: "Company CRM",
+        details: `Added company "${company.name}" to CRM`
+      });
+    } catch (err) {
+      console.error("Failed to create ActivityLog for company creation:", err);
+    }
     res.status(201).json({ success: true, company });
   } catch (error) {
     if (error.code === 11000) {

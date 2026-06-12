@@ -1,12 +1,16 @@
 // =============================================================================
-// Intelligent Data Seeder for Job Application CRM
+// Intelligent Data Seeder for Snap Job Placement Tracker
 // =============================================================================
-// This script creates realistic, demo-worthy data that makes the application
-// feel like it has been used daily by a real candidate for ~10 months.
+// Creates realistic, demo-worthy data for ~10 months of job-hunting activity.
+// Fully aligned with the current schema:
+//   - User: emailNotifs + interviewReminders (weeklyDigest removed)
+//   - Event: reminder24hSent + reminder1hSent flags
+//     Past events  → both flags = true  (won't re-trigger on boot)
+//     Future events → both flags = false (will trigger when scheduler runs)
 //
-// Usage: node src/seed.js
-// Login: test@example.com / password123
-// Empty: empty@example.com / password123
+// Usage:  node src/seed.js
+// Login:  test@example.com  / password123
+// Empty:  empty@example.com / password123
 // =============================================================================
 
 import mongoose from "mongoose";
@@ -16,8 +20,14 @@ import Job from "./models/Job.js";
 import Company from "./models/Company.js";
 import Resume from "./models/Resume.js";
 import ActivityLog from "./models/ActivityLog.js";
+import Event from "./models/Event.js";
 
 dotenv.config();
+
+if (process.env.NODE_ENV === "production") {
+  console.error("Refusing to run seed script in production.");
+  process.exit(1);
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -38,6 +48,16 @@ const addDays = (base, days) => new Date(base.getTime() + days * 86400000);
 
 /** Returns a Date offset by `hours` from `base`. */
 const addHours = (base, hours) => new Date(base.getTime() + hours * 3600000);
+
+/** Returns a Date with randomized business hour/minute (9:00 AM - 5:00 PM). */
+const randomizeTime = (date) => {
+  const d = new Date(date);
+  d.setHours(randInt(9, 17));
+  d.setMinutes(pick([0, 15, 30, 45]));
+  d.setSeconds(0);
+  d.setMilliseconds(0);
+  return d;
+};
 
 // ─── Reference Data ──────────────────────────────────────────────────────────
 
@@ -372,7 +392,8 @@ async function seed() {
     Job.deleteMany({}),
     Company.deleteMany({}),
     Resume.deleteMany({}),
-    ActivityLog.deleteMany({})
+    ActivityLog.deleteMany({}),
+    Event.deleteMany({})
   ]);
   console.log("✓ All collections cleared");
 
@@ -381,14 +402,20 @@ async function seed() {
   const mainUser = await User.create({
     name: "Arjun Mehta",
     email: "test@example.com",
-    password: "password123"
+    password: "password123",
+    emailNotifs: true,
+    interviewReminders: true,
+    theme: "system"
   });
   console.log(`✓ Main user: test@example.com / password123 (id: ${mainUser._id})`);
 
   const emptyUser = await User.create({
     name: "Empty User",
     email: "empty@example.com",
-    password: "password123"
+    password: "password123",
+    emailNotifs: true,
+    interviewReminders: true,
+    theme: "system"
   });
   console.log(`✓ Empty user: empty@example.com / password123 (id: ${emptyUser._id})`);
 
@@ -463,6 +490,7 @@ async function seed() {
   const startDate = addDays(now, -300); // ~10 months ago
   const allJobs = [];
   const activityBatch = [];
+  let eventCount = 0;
 
   // Track reapplication scenarios
   const reappliedCompanies = new Set();
@@ -511,6 +539,9 @@ async function seed() {
       jobUrl = `${companyDef.careerPage}/${randInt(10000, 99999)}`;
     }
 
+    const rawFollowUpDate = overrides.followUpDate !== undefined ? overrides.followUpDate : followUpDate;
+    const rawInterviewDate = overrides.interviewDate !== undefined ? overrides.interviewDate : interviewDate;
+
     const jobData = {
       userId,
       company: companyDef.name,
@@ -525,11 +556,12 @@ async function seed() {
       recruiterName,
       recruiterEmail,
       jobUrl,
-      followUpDate: overrides.followUpDate || followUpDate,
-      interviewDate: overrides.interviewDate || interviewDate,
+      followUpDate: rawFollowUpDate ? randomizeTime(rawFollowUpDate) : undefined,
+      interviewDate: rawInterviewDate ? randomizeTime(rawInterviewDate) : undefined,
       tags,
       resumeUrl: resume?.url,
       resumeId: resume?._id,
+      resumeName: resume?.name,
       notes: generateNote(role),
       history: overrides.history || history,
     };
@@ -539,18 +571,50 @@ async function seed() {
     // Backdate createdAt to match appliedDate
     await Job.updateOne({ _id: job._id }, { $set: { createdAt: appliedDate, updatedAt: addDays(appliedDate, randInt(0, 30)) } });
 
+    // Create corresponding Calendar Event if interviewDate is present
+    if (job.interviewDate) {
+      eventCount++;
+      const startHour = job.interviewDate.getHours();
+      const startMin = String(job.interviewDate.getMinutes()).padStart(2, '0');
+      const endHour = Math.min(startHour + 1, 23);
+
+      // Determine whether this interview is in the future or the past
+      const isPast = job.interviewDate <= now;
+
+      const eventDoc = await Event.create({
+        userId,
+        jobId: job._id,
+        title: `${role} Interview — ${companyDef.name}`,
+        description: `Interview round with ${recruiterName || "Engineering Team"}. Link: ${jobUrl || "N/A"}`,
+        date: job.interviewDate,
+        startTime: `${String(startHour).padStart(2, '0')}:${startMin}`,
+        endTime: `${String(endHour).padStart(2, '0')}:${startMin}`,
+        location: location || "Remote",
+        meetingLink: "https://meet.google.com/abc-defg-hij",
+        company: companyDef.name,
+        interviewRound: pick(["Screening", "Technical", "HR"]),
+        syncStatus: "pending",
+        // Past interviews: mark reminders as already sent so they don't retrigger.
+        // Future interviews: leave as false so the scheduler can fire them.
+        reminder24hSent: isPast,
+        reminder1hSent: isPast,
+      });
+      // Backdate event timestamps to match the job
+      await Event.updateOne({ _id: eventDoc._id }, { $set: { createdAt: appliedDate, updatedAt: appliedDate } });
+    }
+
     allJobs.push(job);
 
-    // Generate activity logs for this job
+    // Activity logs for this job
     const logs = [];
-    logs.push({ userId, jobId: job._id, action: "Job created", details: `Added ${role} at ${companyDef.name}`, createdAt: appliedDate });
+    logs.push({ userId, jobId: job._id, action: "Job Added", details: `Added ${role} at ${companyDef.name}`, createdAt: appliedDate });
 
     if (resume) {
-      logs.push({ userId, jobId: job._id, action: "Resume attached", details: `Attached "${resume.name}"`, createdAt: addHours(appliedDate, randInt(1, 4)) });
+      logs.push({ userId, jobId: job._id, action: "Resume Attached", details: `Attached "${resume.name}"`, createdAt: addHours(appliedDate, randInt(1, 4)) });
     }
 
     if (jobData.status !== "Wishlist") {
-      logs.push({ userId, jobId: job._id, action: "Application submitted", details: `Submitted via ${jobData.source}`, createdAt: addHours(appliedDate, randInt(2, 8)) });
+      logs.push({ userId, jobId: job._id, action: "Job Updated", details: `Submitted via ${jobData.source}`, createdAt: addHours(appliedDate, randInt(2, 8)) });
     }
 
     // Log each status transition
@@ -559,22 +623,22 @@ async function seed() {
       logs.push({
         userId,
         jobId: job._id,
-        action: "Status changed",
-        details: `Status changed to "${h.status}"`,
+        action: "Status Updated",
+        details: `Moved ${role} at ${companyDef.name} to ${h.status}`,
         createdAt: h.at
       });
     }
 
     if (followUpDate) {
-      logs.push({ userId, jobId: job._id, action: "Follow-up scheduled", details: `Follow-up set for ${followUpDate.toLocaleDateString()}`, createdAt: addDays(appliedDate, randInt(1, 5)) });
+      logs.push({ userId, jobId: job._id, action: "Job Updated", details: `Follow-up set for ${followUpDate.toLocaleDateString()}`, createdAt: addDays(appliedDate, randInt(1, 5)) });
     }
 
     if (interviewDate) {
-      logs.push({ userId, jobId: job._id, action: "Interview scheduled", details: `Interview at ${companyDef.name} on ${interviewDate.toLocaleDateString()}`, createdAt: addDays(appliedDate, randInt(3, 10)) });
+      logs.push({ userId, jobId: job._id, action: "Interview Reminder", details: `Upcoming interview for ${role} at ${companyDef.name} on ${interviewDate.toLocaleDateString()}`, createdAt: addDays(appliedDate, randInt(3, 10)) });
     }
 
     if (jobData.notes) {
-      logs.push({ userId, jobId: job._id, action: "Notes added", details: jobData.notes.substring(0, 80), createdAt: addHours(appliedDate, randInt(1, 48)) });
+      logs.push({ userId, jobId: job._id, action: "Job Updated", details: jobData.notes.substring(0, 80), createdAt: addHours(appliedDate, randInt(1, 48)) });
     }
 
     activityBatch.push(...logs);
@@ -798,7 +862,144 @@ async function seed() {
   }
   console.log(`✓ Inserted ${formattedLogs.length} activity log entries`);
 
-  // ── Step 7: Generate CSV test files ────────────────────────────────────
+  // ── Step 7: Standalone Calendar Events (not tied to a job) ─────────────
+  // These demonstrate the Event model independently and exercise the
+  // 24h / 1h reminder scheduler without requiring a linked Job document.
+  console.log("\n── Creating standalone calendar events ──");
+
+  const standaloneEvents = [
+    // ── Future events (reminder flags = false — scheduler will fire these) ──
+    {
+      title: "Mock Interview — System Design",
+      description: "Practice session with a peer engineer covering distributed systems and scalability.",
+      daysFromNow: 1,       // Tomorrow — will trigger 24h reminder
+      startHour: 10,
+      durationHours: 1,
+      company: "Practice",
+      interviewRound: "Technical",
+      location: "Zoom",
+      meetingLink: "https://zoom.us/j/1234567890",
+    },
+    {
+      title: "Behavioural Prep Call",
+      description: "STAR method practice with mentor. Prepare leadership and conflict-resolution stories.",
+      daysFromNow: 3,
+      startHour: 15,
+      durationHours: 1,
+      company: "Mentorship",
+      interviewRound: "HR",
+      location: "Google Meet",
+      meetingLink: "https://meet.google.com/xyz-abcd-efg",
+    },
+    {
+      title: "Atlassian — Final Round Interview",
+      description: "Final loop with Hiring Manager and two senior engineers. Topics: System Design + Culture Fit.",
+      daysFromNow: 5,
+      startHour: 11,
+      durationHours: 2,
+      company: "Atlassian",
+      interviewRound: "HR",
+      location: "Atlassian Bangalore Office",
+      meetingLink: "https://meet.google.com/atl-final-loop",
+    },
+    {
+      title: "Snowflake — Technical Screen",
+      description: "45-minute coding round followed by system design. Expect distributed systems questions.",
+      daysFromNow: 7,
+      startHour: 14,
+      durationHours: 1,
+      company: "Snowflake",
+      interviewRound: "Technical",
+      location: "Remote",
+      meetingLink: "https://zoom.us/j/9876543210",
+    },
+    {
+      title: "GitHub — Portfolio Review",
+      description: "Walk through open-source contributions and side projects with the engineering team.",
+      daysFromNow: 10,
+      startHour: 16,
+      durationHours: 1,
+      company: "GitHub",
+      interviewRound: "Screening",
+      location: "Remote",
+      meetingLink: "https://meet.google.com/ghb-portf-rev",
+    },
+    {
+      title: "Databricks — ML System Design",
+      description: "Design a real-time feature store for a recommendation system. Prepare for data pipeline questions.",
+      daysFromNow: 14,
+      startHour: 10,
+      durationHours: 2,
+      company: "Databricks",
+      interviewRound: "Technical",
+      location: "Remote",
+      meetingLink: "https://zoom.us/j/1122334455",
+    },
+
+    // ── Past events (reminder flags = true — already done, won't retrigger) ──
+    {
+      title: "Notion — Screening Call",
+      description: "30-minute intro call with recruiter. Discussed role, team, and compensation range.",
+      daysFromNow: -7,
+      startHour: 11,
+      durationHours: 1,
+      company: "Notion",
+      interviewRound: "Screening",
+      location: "Remote",
+      meetingLink: "https://meet.google.com/not-scr-call",
+    },
+    {
+      title: "Vercel — Frontend Technical Round",
+      description: "Live coding: implement a React hook for infinite scrolling. Followed by performance optimization Q&A.",
+      daysFromNow: -14,
+      startHour: 14,
+      durationHours: 2,
+      company: "Vercel",
+      interviewRound: "Technical",
+      location: "Remote",
+      meetingLink: "https://meet.google.com/vrc-fe-round",
+    },
+    {
+      title: "Postman — API Design Interview",
+      description: "Design a rate-limiting API gateway. Discussed REST vs GraphQL trade-offs.",
+      daysFromNow: -21,
+      startHour: 10,
+      durationHours: 1,
+      company: "Postman",
+      interviewRound: "Technical",
+      location: "Hybrid - Bangalore",
+      meetingLink: undefined,
+    },
+  ];
+
+  let standaloneEventCount = 0;
+  for (const def of standaloneEvents) {
+    const eventDate = addDays(now, def.daysFromNow);
+    const startH = String(def.startHour).padStart(2, '0');
+    const endH = String(Math.min(def.startHour + def.durationHours, 23)).padStart(2, '0');
+    const isPast = def.daysFromNow < 0;
+
+    await Event.create({
+      userId,
+      title: def.title,
+      description: def.description,
+      date: eventDate,
+      startTime: `${startH}:00`,
+      endTime: `${endH}:00`,
+      location: def.location,
+      meetingLink: def.meetingLink || undefined,
+      company: def.company,
+      interviewRound: def.interviewRound,
+      syncStatus: "pending",
+      reminder24hSent: isPast,
+      reminder1hSent: isPast,
+    });
+    eventCount++;
+    standaloneEventCount++;
+  }
+  console.log(`✓ Created ${standaloneEventCount} standalone calendar events`);
+
+  // ── Step 8: Generate CSV test files ──────────────────────────────────────
   console.log("\n── Generating CSV test files ──");
 
   const validCsv = `company,role,status,appliedDate,source,priority,location,salary,recruiterName,recruiterEmail,jobUrl,followUpDate,interviewDate,tags,notes
@@ -834,11 +1035,16 @@ X,Y,Applied,2026-06-01,Other,Low,Remote,0`;
   console.log(`  Companies:      ${companyMap.size}`);
   console.log(`  Resumes:        ${allResumeDocs.length}`);
   console.log(`  Jobs:           ${jobCount}`);
+  console.log(`  Calendar Events:${eventCount} (${standaloneEventCount} standalone + rest tied to jobs)`);
   console.log(`  Activity Logs:  ${formattedLogs.length}`);
   console.log(`  CSV Test Files: 2 (valid + invalid)`);
   console.log("─".repeat(60));
-  console.log(`  Login:  test@example.com / password123`);
+  console.log(`  Login:  test@example.com  / password123`);
   console.log(`  Empty:  empty@example.com / password123`);
+  console.log("─".repeat(60));
+  console.log(`  Notifications:  emailNotifs=true, interviewReminders=true`);
+  console.log(`  Future events:  reminder flags = false (scheduler will fire)`);
+  console.log(`  Past events:    reminder flags = true  (won't retrigger)`);
   console.log("═".repeat(60));
 
   await mongoose.disconnect();

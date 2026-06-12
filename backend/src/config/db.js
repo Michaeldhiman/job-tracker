@@ -1,5 +1,6 @@
 // MongoDB connection helper using Mongoose.
 import mongoose from "mongoose";
+import { config } from "./runtimeConfig.js";
 
 const connectDB = async () => {
   // Fail fast if the DB connection string is not provided.
@@ -10,7 +11,7 @@ const connectDB = async () => {
   try {
     // `serverSelectionTimeoutMS` limits how long Mongoose waits for a server.
     await mongoose.connect(process.env.MONGO_URI, {
-      serverSelectionTimeoutMS: 5000
+      serverSelectionTimeoutMS: config.database.serverSelectionTimeoutMs
     });
     console.log("MongoDB connected");
   } catch (error) {

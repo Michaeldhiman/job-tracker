@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  X, Briefcase, Building2, MapPin, DollarSign, Calendar, 
+  X, Briefcase, Building2, MapPin, IndianRupee, Calendar, 
   Link as LinkIcon, User, Mail, Tag, AlignLeft, AlertCircle, 
-  Trash2, Clock, Globe, BarChart2, CheckCircle2 
+  Trash2, Clock, Globe, BarChart2, FileText, ExternalLink, Download, Edit 
 } from 'lucide-react';
 import { updateJob, deleteJob } from '../../api/jobsApi.js';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
 
 const STAGES = [
   { id: 'Wishlist', label: 'Wishlist', activeClass: 'bg-blue-500 text-white border-blue-500' },
@@ -20,10 +21,11 @@ const STAGES = [
   { id: 'Rejected', label: 'Rejected', activeClass: 'bg-rose-500 text-white border-rose-500' },
 ];
 
-export default function JobDetailsModal({ isOpen, job, onClose, onSuccess }) {
+export default function JobDetailsModal({ isOpen, job, onClose, onSuccess, onEdit }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState(null);
+  const { success: toastSuccess, error: toastError } = useToast();
 
   if (!job) return null;
 
@@ -34,9 +36,12 @@ export default function JobDetailsModal({ isOpen, job, onClose, onSuccess }) {
     setError(null);
     try {
       await updateJob(job._id, { status: newStage });
+      toastSuccess(`Moved to "${newStage}"`, `${job.role} updated`);
       onSuccess();
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "Failed to update status");
+      const msg = err.response?.data?.message || err.message || "Failed to update status";
+      setError(msg);
+      toastError(msg, 'Update failed');
       setIsUpdating(false);
     }
   };
@@ -47,9 +52,12 @@ export default function JobDetailsModal({ isOpen, job, onClose, onSuccess }) {
       setError(null);
       try {
         await deleteJob(job._id);
+        toastSuccess(`"${job.role}" at ${job.company} deleted`, 'Application deleted');
         onSuccess();
       } catch (err) {
-        setError(err.response?.data?.message || err.message || "Failed to delete job");
+        const msg = err.response?.data?.message || err.message || "Failed to delete job";
+        setError(msg);
+        toastError(msg, 'Delete failed');
         setIsDeleting(false);
       }
     }
@@ -58,7 +66,7 @@ export default function JobDetailsModal({ isOpen, job, onClose, onSuccess }) {
   // Format currency
   const formatSalary = (val) => {
     if (!val) return 'Not specified';
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(val);
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
   };
 
   // Format date
@@ -192,7 +200,7 @@ export default function JobDetailsModal({ isOpen, job, onClose, onSuccess }) {
                         
                         <div className="flex justify-between items-center py-0.5">
                           <span className="text-text-muted flex items-center gap-2">
-                            <DollarSign className="w-4 h-4" /> Salary Expected
+                            <IndianRupee className="w-4 h-4" /> Salary Expected
                           </span>
                           <span className="text-text font-medium">{formatSalary(job.salary)}</span>
                         </div>
@@ -256,7 +264,6 @@ export default function JobDetailsModal({ isOpen, job, onClose, onSuccess }) {
                         {job.history && job.history.length > 0 ? (
                           job.history.map((hist, idx) => {
                             const isLast = idx === job.history.length - 1;
-                            const stageInfo = STAGES.find(s => s.id === hist.status) || STAGES[1];
                             return (
                               <div key={idx} className="relative flex flex-col gap-0.5">
                                 <div className={`absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2 ${
@@ -300,6 +307,69 @@ export default function JobDetailsModal({ isOpen, job, onClose, onSuccess }) {
                     </div>
                   </div>
 
+                  {/* Resume Section */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold text-text border-b border-border/60 pb-1.5 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-primary" /> Resume Submitted
+                    </h4>
+                    {job.resumeUrl || job.resumeId ? (
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3.5 bg-surface-elevated/20 border border-border/80 rounded-xl gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-medium text-text truncate max-w-[220px]" title={job.resumeId?.name || job.resumeName || 'Resume'}>
+                                {job.resumeId?.name || job.resumeName || 'Resume'}
+                              </p>
+                              {(!job.resumeId && (job.resumeName || job.resumeUrl)) && (
+                                <span className="text-[10px] bg-rose-500/10 text-rose-500 border border-rose-500/20 px-1.5 py-0.5 rounded font-semibold shrink-0">
+                                  Deleted Resume
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-text-muted mt-0.5">
+                              {job.resumeId?.createdAt 
+                                ? `Uploaded ${new Date(job.resumeId.createdAt).toLocaleDateString()}` 
+                                : 'Preserved submission record'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            onClick={() => window.open(job.resumeId?.url || job.resumeUrl, '_blank')}
+                            className="h-8 text-xs flex items-center gap-1 px-3"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" /> View
+                          </Button>
+                          <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            onClick={() => {
+                              const url = job.resumeId?.url || job.resumeUrl;
+                              if (url) {
+                                const downloadUrl = url.includes('cloudinary.com') 
+                                  ? url.replace('/upload/', '/upload/fl_attachment/') 
+                                  : url;
+                                window.open(downloadUrl, '_blank');
+                              }
+                            }}
+                            className="h-8 text-xs flex items-center gap-1 px-3"
+                          >
+                            <Download className="w-3.5 h-3.5" /> Download
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 text-center text-sm text-text-muted bg-background/30 border border-dashed border-border rounded-xl">
+                        No resume was associated with this application.
+                      </div>
+                    )}
+                  </div>
+
                   {/* Notes */}
                   {job.notes && (
                     <div className="space-y-2">
@@ -326,6 +396,14 @@ export default function JobDetailsModal({ isOpen, job, onClose, onSuccess }) {
                   </Button>
                   
                   <div className="flex gap-2">
+                    <Button 
+                      variant="secondary" 
+                      onClick={() => onEdit?.(job)}
+                      disabled={isDeleting || isUpdating}
+                      className="flex items-center gap-2 py-2 h-9"
+                    >
+                      <Edit className="w-4 h-4" /> Edit Details
+                    </Button>
                     <Button 
                       variant="secondary" 
                       onClick={onClose}

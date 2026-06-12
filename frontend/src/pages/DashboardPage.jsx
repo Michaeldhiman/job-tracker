@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getAnalytics, searchJobs } from '../api/jobsApi.js';
 import ErrorAlert from '../components/feedback/ErrorAlert.jsx';
-import Loader from '../components/feedback/Loader.jsx';
+import { DashboardStatsSkeleton, ChartSkeleton, InterviewListSkeleton } from '../components/feedback/Skeletons.jsx';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card.jsx';
 import { Briefcase, Building2, Calendar, Target, Clock, AlertCircle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
@@ -9,6 +9,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 function DashboardPage() {
   const [data, setData] = useState({ funnel: [], trends: [], timeMetrics: {} });
   const [interviews, setInterviews] = useState([]);
+  const [recentJobs, setRecentJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -16,11 +17,12 @@ function DashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const [analyticsRes, techRes, hrRes, screenRes] = await Promise.all([
+      const [analyticsRes, techRes, hrRes, screenRes, recentRes] = await Promise.all([
         getAnalytics(),
         searchJobs({ status: 'Technical', limit: 5 }),
         searchJobs({ status: 'HR', limit: 5 }),
-        searchJobs({ status: 'Screening', limit: 5 })
+        searchJobs({ status: 'Screening', limit: 5 }),
+        searchJobs({ limit: 5 })
       ]);
       const interviewsRes = [
         ...(techRes?.results || []),
@@ -32,6 +34,7 @@ function DashboardPage() {
         setData(analyticsRes.data);
       }
       setInterviews(interviewsRes || []);
+      setRecentJobs(recentRes?.results || []);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Failed to load dashboard data.');
     } finally {
@@ -43,18 +46,29 @@ function DashboardPage() {
     loadDashboardData();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        <Loader text="Loading dashboard..." />
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <div className="p-6">
         <ErrorAlert message={error} />
+      </div>
+    );
+  }
+
+  // Skeleton loading state — shows structure immediately
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-text">Dashboard Overview</h1>
+            <p className="text-text-muted text-sm">Monitor your job search progress and upcoming interviews.</p>
+          </div>
+        </div>
+        <DashboardStatsSkeleton />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <ChartSkeleton height="h-80" />
+          <InterviewListSkeleton />
+        </div>
       </div>
     );
   }
@@ -201,8 +215,109 @@ function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Bottom Grid: Recent Applications and Stage Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Recent Applications</CardTitle>
+            <CardDescription>Your latest job applications</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recentJobs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Briefcase className="w-10 h-10 text-text-muted mb-3 opacity-50" />
+                <p className="text-sm text-text-muted">No applications found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-border/85 pb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                      <th className="py-3 px-2">Role & Company</th>
+                      <th className="py-3 px-2">Date Applied</th>
+                      <th className="py-3 px-2">Stage</th>
+                      <th className="py-3 px-2">Priority</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40 text-sm">
+                    {recentJobs.map(job => (
+                      <tr key={job._id} className="hover:bg-white/5 transition-colors">
+                        <td className="py-3.5 px-2">
+                          <div className="font-semibold text-text">{job.role}</div>
+                          <div className="text-xs text-text-muted">{job.company}</div>
+                        </td>
+                        <td className="py-3.5 px-2 text-text-muted">
+                          {job.appliedDate ? new Date(job.appliedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                        </td>
+                        <td className="py-3.5 px-2">
+                          <span className={`inline-block px-2.5 py-0.5 rounded text-xs font-semibold ${getStatusColor(job.status)}`}>
+                            {job.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-2">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${getPriorityColor(job.priority)}`}>
+                            {job.priority || 'Medium'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Stage Distribution</CardTitle>
+            <CardDescription>Applications count by status</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {funnelData.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Target className="w-10 h-10 text-text-muted mb-3 opacity-50" />
+                <p className="text-sm text-text-muted">No data available</p>
+              </div>
+            ) : (
+              <div className="h-[385px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={funnelData} layout="vertical" margin={{ top: 10, right: 15, left: -10, bottom: 5 }}>
+                    <XAxis type="number" stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis dataKey="name" type="category" stroke="#a1a1aa" fontSize={12} tickLine={false} axisLine={false} width={100} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1c1c1f', borderColor: '#ffffff15', borderRadius: '8px' }}
+                      itemStyle={{ color: '#e3e1ec' }}
+                    />
+                    <Bar dataKey="count" fill="#4f46e5" radius={[0, 4, 4, 0]} barSize={18} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
+
+// Helpers for badges styling
+const getPriorityColor = (priority) => {
+  switch (priority) {
+    case 'High': return 'text-rose-400 bg-rose-500/10 border border-rose-500/20';
+    case 'Medium': return 'text-amber-400 bg-amber-500/10 border border-amber-500/20';
+    default: return 'text-slate-400 bg-slate-500/10 border border-slate-500/20';
+  }
+};
+
+const getStatusColor = (status) => {
+  switch (status) {
+    case 'Offer': return 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20';
+    case 'Rejected': return 'text-rose-400 bg-rose-500/10 border border-rose-500/20';
+    case 'Wishlist': return 'text-purple-400 bg-purple-500/10 border border-purple-500/20';
+    default: return 'text-primary bg-primary/10 border border-primary/20';
+  }
+};
 
 export default DashboardPage;

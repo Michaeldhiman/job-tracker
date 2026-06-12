@@ -19,6 +19,17 @@ const resumeSchema = new mongoose.Schema(
     type: {
       type: String,
       trim: true
+    },
+    publicId: {
+      type: String,
+      trim: true
+    },
+    size: {
+      type: Number
+    },
+    hash: {
+      type: String,
+      trim: true
     }
   },
   {

@@ -2,12 +2,12 @@ import dotenv from "dotenv";
 import app from "./app.js";
 import connectDB from "./config/db.js";
 import { startScheduler } from "./services/schedulerService.js";
+import { config } from "./config/runtimeConfig.js";
 
 // Load environment variables (e.g. PORT, MONGO_URI, etc.).
 dotenv.config();
 
-// Port for the Express server, falling back to 5000 in development.
-const PORT = process.env.PORT || 5000;
+const PORT = config.port;
 
 // Bootstraps the app: first connect to the database, then start listening.
 const startServer = async () => {

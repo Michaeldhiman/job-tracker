@@ -12,16 +12,14 @@ import CalendarPage from './pages/CalendarPage.jsx';
 import CompaniesPage from './pages/CompaniesPage.jsx';
 import ResumesPage from './pages/ResumesPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
+import { AppBootstrapLoader } from './components/feedback/Skeletons.jsx';
+
 // Protected route wrapper
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
+    return <AppBootstrapLoader />;
   }
 
   if (!isAuthenticated) {

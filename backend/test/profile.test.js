@@ -41,7 +41,6 @@ describe("Profile and Preferences API", () => {
     expect(res.body.user).toHaveProperty("email", "profile-test@example.com");
     expect(res.body.user.emailNotifs).toBe(true);
     expect(res.body.user.interviewReminders).toBe(true);
-    expect(res.body.user.weeklyDigest).toBe(false);
   });
 
   it("should update profile preferences and persist them", async () => {
@@ -52,7 +51,6 @@ describe("Profile and Preferences API", () => {
       .send({
         emailNotifs: false,
         interviewReminders: false,
-        weeklyDigest: true,
         theme: "dark"
       });
 
@@ -60,7 +58,6 @@ describe("Profile and Preferences API", () => {
     expect(updateRes.body.success).toBe(true);
     expect(updateRes.body.user.emailNotifs).toBe(false);
     expect(updateRes.body.user.interviewReminders).toBe(false);
-    expect(updateRes.body.user.weeklyDigest).toBe(true);
     expect(updateRes.body.user.theme).toBe("dark");
 
     // Fetch again to verify persistence
@@ -69,11 +66,9 @@ describe("Profile and Preferences API", () => {
       .set("Authorization", `Bearer ${token}`);
 
     expect(getRes.status).toBe(200);
-    // Since getCurrentUser returns raw user (un-sanitized), check properties on it
     const dbUser = getRes.body.user;
     expect(dbUser.emailNotifs).toBe(false);
     expect(dbUser.interviewReminders).toBe(false);
-    expect(dbUser.weeklyDigest).toBe(true);
     expect(dbUser.theme).toBe("dark");
   });
 });

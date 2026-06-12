@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getCompanies } from '../api/jobsApi.js';
-import ErrorAlert from '../components/feedback/ErrorAlert.jsx';
-import Loader from '../components/feedback/Loader.jsx';
+import { CompaniesGridSkeleton } from '../components/feedback/Skeletons.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 import Button from '../components/ui/Button.jsx';
 import { Card, CardContent } from '../components/ui/Card.jsx';
 import Input from '../components/ui/Input.jsx';
@@ -13,6 +13,7 @@ function CompaniesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddCompany, setShowAddCompany] = useState(false);
+  const { error: toastError } = useToast();
 
   const fetchCompanies = async () => {
     try {
@@ -20,7 +21,9 @@ function CompaniesPage() {
       const res = await getCompanies({ limit: 100 });
       setCompanies(res.companies || []);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load companies');
+      const msg = err.response?.data?.message || 'Failed to load companies';
+      setError(msg);
+      toastError(msg, 'Error loading companies');
     } finally {
       setLoading(false);
     }
@@ -48,10 +51,8 @@ function CompaniesPage() {
         </div>
       </div>
 
-      <ErrorAlert message={error} />
-
       {loading ? (
-        <div className="h-64 flex items-center justify-center"><Loader /></div>
+        <CompaniesGridSkeleton count={9} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {companies.length === 0 ? (

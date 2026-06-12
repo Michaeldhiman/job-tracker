@@ -2,16 +2,18 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
 import { useTheme } from '../context/ThemeContext.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
-import { User, Bell, Download, Trash2, Moon, Sun, Monitor, HardDrive } from 'lucide-react';
+import { User, Bell, Download, Trash2, Moon, Sun, Monitor, HardDrive, CheckCircle2, Info } from 'lucide-react';
 import axiosClient from '../api/axiosClient.js';
 
 function SettingsPage() {
   const { user, updateUser, logout } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { success: toastSuccess, error: toastError, info: toastInfo } = useToast();
   const navigate = useNavigate();
-  
+
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -20,45 +22,63 @@ function SettingsPage() {
   const [preferences, setPreferences] = useState({
     emailNotifs: user?.emailNotifs ?? true,
     interviewReminders: user?.interviewReminders ?? true,
-    weeklyDigest: user?.weeklyDigest ?? false,
   });
+
+  // Track which preference key is currently being saved to show per-toggle loading
+  const [savingKey, setSavingKey] = useState(null);
 
   useEffect(() => {
     if (user) {
       setPreferences({
         emailNotifs: user.emailNotifs ?? true,
         interviewReminders: user.interviewReminders ?? true,
-        weeklyDigest: user.weeklyDigest ?? false,
       });
       setName(user.name || '');
       setEmail(user.email || '');
     }
   }, [user]);
 
+  // Toggle a notification preference with optimistic update and server sync.
+  // If the master switch (emailNotifs) is turned off, interviewReminders is
+  // also forced off both locally and on the server.
   const togglePreference = async (key) => {
+    // Prevent toggling sub-settings when master switch is off
+    if (key === 'interviewReminders' && !preferences.emailNotifs) return;
+
     const updatedVal = !preferences[key];
-    const newPrefs = { ...preferences, [key]: updatedVal };
-    setPreferences(newPrefs);
-    
+
+    // Build the update payload — turning off master switch also disables sub-settings
+    const updates = { [key]: updatedVal };
+    if (key === 'emailNotifs' && !updatedVal) {
+      updates.interviewReminders = false;
+    }
+
+    // Optimistic UI update
+    setPreferences(prev => ({ ...prev, ...updates }));
+    setSavingKey(key);
+
     try {
-      const res = await axiosClient.put('/api/auth/profile', {
-        [key]: updatedVal
-      });
-      if (res.data?.success && res.data?.user) {
-        updateUser(res.data.user);
+      const res = await axiosClient.put('/api/notifications/preferences', updates);
+      if (res.data?.success && res.data?.preferences) {
+        // Sync auth context with the confirmed server values
+        updateUser({ ...user, ...res.data.preferences });
+        setPreferences(prev => ({ ...prev, ...res.data.preferences }));
       }
+      toastSuccess('Notification preferences updated.', 'Saved');
     } catch (err) {
       console.error(`Failed to toggle preference ${key}`, err);
-      setPreferences(prev => ({ ...prev, [key]: !updatedVal }));
+      // Revert optimistic update on error
+      setPreferences(prev => ({ ...prev, ...Object.fromEntries(Object.entries(updates).map(([k]) => [k, !updates[k]])) }));
+      toastError('Failed to update preference. Please try again.');
+    } finally {
+      setSavingKey(null);
     }
   };
 
   const handleSetTheme = async (mode) => {
     setTheme(mode);
     try {
-      const res = await axiosClient.put('/api/auth/profile', {
-        theme: mode
-      });
+      const res = await axiosClient.put('/api/auth/profile', { theme: mode });
       if (res.data?.success && res.data?.user) {
         updateUser(res.data.user);
       }
@@ -73,12 +93,10 @@ function SettingsPage() {
       const res = await axiosClient.put('/api/auth/profile', { name, email });
       if (res.data?.success && res.data?.user) {
         updateUser(res.data.user);
-        alert('Profile updated successfully!');
-      } else {
-        alert('Profile updated successfully!');
       }
+      toastSuccess('Your profile has been updated.', 'Profile saved');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update profile');
+      toastError(err.response?.data?.message || 'Failed to update profile', 'Save failed');
     } finally {
       setIsSaving(false);
     }
@@ -87,35 +105,92 @@ function SettingsPage() {
   const handleExportData = async () => {
     try {
       setIsExportingCsv(true);
+      toastInfo('Preparing your data export…', 'Exporting');
       const res = await axiosClient.get('/api/export/all', { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'obsidian_crm_data.csv');
+      link.setAttribute('download', 'snap_job_data.csv');
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
+      toastSuccess('Your data has been exported as CSV.', 'Export complete');
     } catch (err) {
-      alert('Failed to export data');
+      toastError('Failed to export data. Please try again.', 'Export failed');
     } finally {
       setIsExportingCsv(false);
     }
   };
-
-
 
   const handleDeleteAccount = async () => {
     if (window.confirm("Are you absolutely sure? This will permanently delete your account, all job applications, companies, and resumes. This action cannot be undone.")) {
       try {
         await axiosClient.delete('/api/auth/account');
         navigate('/');
-        setTimeout(() => {
-          logout();
-        }, 0);
+        setTimeout(() => { logout(); }, 0);
       } catch (err) {
-        alert('Failed to delete account');
+        toastError('Failed to delete account. Please try again.', 'Error');
       }
     }
+  };
+
+  // ── Toggle component ──────────────────────────────────────────────────────
+  const Toggle = ({ id, checked, onChange, disabled = false, loading = false }) => (
+    <button
+      id={id}
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled || loading}
+      onClick={onChange}
+      title={disabled ? 'Enable Email Notifications to use this feature' : undefined}
+      className={[
+        'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent',
+        'transition-colors duration-200 ease-in-out',
+        'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background',
+        checked && !disabled ? 'bg-primary' : 'bg-surface-elevated',
+        disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
+        loading ? 'opacity-60' : '',
+      ].join(' ')}
+    >
+      <span
+        className={[
+          'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0',
+          'transition duration-200 ease-in-out',
+          checked ? 'translate-x-5' : 'translate-x-0',
+        ].join(' ')}
+      />
+    </button>
+  );
+
+  // ── Notification row component ────────────────────────────────────────────
+  const NotifRow = ({ id, label, description, prefKey, disabled = false }) => {
+    const isDisabled = disabled || savingKey !== null;
+    return (
+      <div className={[
+        'flex items-start justify-between p-4 rounded-xl border transition-all',
+        disabled
+          ? 'border-border/50 bg-background/20 opacity-60'
+          : 'border-border bg-background/50 hover:border-border/80',
+      ].join(' ')}>
+        <div className="flex-1 mr-4">
+          <p className="text-sm font-semibold text-text">{label}</p>
+          <p className="text-xs text-text-muted mt-0.5 leading-relaxed">{description}</p>
+          {disabled && (
+            <p className="flex items-center gap-1 text-xs text-amber-500/80 mt-1.5">
+              <Info className="w-3 h-3 shrink-0" />
+              Enable Email Notifications to use this feature
+            </p>
+          )}
+        </div>
+        <Toggle
+          id={id}
+          checked={preferences[prefKey]}
+          onChange={() => togglePreference(prefKey)}
+          disabled={isDisabled}
+          loading={savingKey === prefKey}
+        />
+      </div>
+    );
   };
 
   return (
@@ -126,7 +201,7 @@ function SettingsPage() {
       </div>
 
       <div className="grid gap-6">
-        {/* Profile Settings */}
+        {/* ── Profile ─────────────────────────────────────────────────────── */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -136,7 +211,7 @@ function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary to-emerald-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-primary to-emerald-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg select-none">
                 {user?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div>
@@ -144,21 +219,23 @@ function SettingsPage() {
                 <p className="text-sm text-text-muted">{user?.email || 'email@example.com'}</p>
               </div>
             </div>
-            
+
             <div className="pt-4 grid sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text">Full Name</label>
-                <input 
-                  type="text" 
+                <label htmlFor="settings-name" className="text-sm font-medium text-text">Full Name</label>
+                <input
+                  id="settings-name"
+                  type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-text"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-text">Email Address</label>
-                <input 
-                  type="email" 
+                <label htmlFor="settings-email" className="text-sm font-medium text-text">Email Address</label>
+                <input
+                  id="settings-email"
+                  type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-text"
@@ -166,14 +243,24 @@ function SettingsPage() {
               </div>
             </div>
             <div className="pt-2 flex justify-end">
-              <Button onClick={handleSaveProfile} disabled={isSaving}>
-                {isSaving ? 'Saving...' : 'Save Changes'}
+              <Button id="settings-save-profile" onClick={handleSaveProfile} disabled={isSaving} className="min-w-[120px] justify-center">
+                {isSaving ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Saving…
+                  </>
+                ) : (
+                  <><CheckCircle2 className="w-4 h-4 mr-2" />Save Changes</>
+                )}
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Preferences */}
+        {/* ── Preferences ─────────────────────────────────────────────────── */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -182,87 +269,90 @@ function SettingsPage() {
             <CardDescription>Manage notifications and appearance</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-text uppercase tracking-wider">Appearance</h4>
+            {/* Appearance */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Appearance</h4>
               <div className="flex items-center gap-3">
-                <button className={`flex-1 py-3 px-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${theme === 'light' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-text-muted hover:text-text'}`} onClick={() => handleSetTheme('light')}>
-                  <Sun className="w-5 h-5" />
-                  <span className="text-sm font-medium">Light</span>
-                </button>
-                <button className={`flex-1 py-3 px-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${theme === 'dark' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-text-muted hover:text-text'}`} onClick={() => handleSetTheme('dark')}>
-                  <Moon className="w-5 h-5" />
-                  <span className="text-sm font-medium">Dark</span>
-                </button>
-                <button className={`flex-1 py-3 px-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${theme === 'system' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-text-muted hover:text-text'}`} onClick={() => handleSetTheme('system')}>
-                  <Monitor className="w-5 h-5" />
-                  <span className="text-sm font-medium">System</span>
-                </button>
+                {[
+                  { mode: 'light', label: 'Light', Icon: Sun },
+                  { mode: 'dark',  label: 'Dark',  Icon: Moon },
+                  { mode: 'system',label: 'System', Icon: Monitor },
+                ].map(({ mode, label, Icon }) => (
+                  <button
+                    key={mode}
+                    id={`settings-theme-${mode}`}
+                    onClick={() => handleSetTheme(mode)}
+                    className={`flex-1 py-3 px-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${
+                      theme === mode
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-background text-text-muted hover:text-text hover:border-border/80'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="text-sm font-medium">{label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="pt-2 space-y-4">
-              <h4 className="text-sm font-semibold text-text uppercase tracking-wider">Notifications</h4>
-              
-              <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/50">
-                <div>
-                  <p className="text-sm font-medium text-text">Email Notifications</p>
-                  <p className="text-xs text-text-muted">Receive updates about your account</p>
-                </div>
-                <button 
-                  onClick={() => togglePreference('emailNotifs')}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background ${preferences.emailNotifs ? 'bg-primary' : 'bg-surface-elevated'}`}
-                >
-                  <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${preferences.emailNotifs ? 'translate-x-4' : 'translate-x-0'}`} />
-                </button>
-              </div>
+            {/* Notifications */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider">Notifications</h4>
 
-              <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/50">
-                <div>
-                  <p className="text-sm font-medium text-text">Interview Reminders</p>
-                  <p className="text-xs text-text-muted">Get notified 24h before scheduled interviews</p>
-                </div>
-                <button 
-                  onClick={() => togglePreference('interviewReminders')}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background ${preferences.interviewReminders ? 'bg-primary' : 'bg-surface-elevated'}`}
-                >
-                  <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${preferences.interviewReminders ? 'translate-x-4' : 'translate-x-0'}`} />
-                </button>
-              </div>
+              {/* Email Notifications — master switch */}
+              <NotifRow
+                id="settings-notif-email"
+                label="Email Notifications"
+                description="Receive important updates and reminders via email. This is the master switch — disabling it stops all emails."
+                prefKey="emailNotifs"
+              />
 
-              <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/50">
-                <div>
-                  <p className="text-sm font-medium text-text">Weekly Digest</p>
-                  <p className="text-xs text-text-muted">Receive a weekly summary of your job search progress</p>
-                </div>
-                <button 
-                  onClick={() => togglePreference('weeklyDigest')}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background ${preferences.weeklyDigest ? 'bg-primary' : 'bg-surface-elevated'}`}
-                >
-                  <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${preferences.weeklyDigest ? 'translate-x-4' : 'translate-x-0'}`} />
-                </button>
-              </div>
+              {/* Interview Reminders — depends on master switch */}
+              <NotifRow
+                id="settings-notif-interviews"
+                label="Interview Reminders"
+                description="Get notified 24 hours and 1 hour before your scheduled interviews."
+                prefKey="interviewReminders"
+                disabled={!preferences.emailNotifs}
+              />
             </div>
           </CardContent>
         </Card>
 
-        {/* Data Management */}
+        {/* ── Data & Storage ───────────────────────────────────────────────── */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <HardDrive className="w-5 h-5 text-primary" /> Data & Storage
+              <HardDrive className="w-5 h-5 text-primary" /> Data &amp; Storage
             </CardTitle>
             <CardDescription>Manage your data exports and resume storage</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button onClick={handleExportData} disabled={isExportingCsv} variant="secondary" className="flex-1 flex justify-center items-center gap-2">
-                <Download className="w-4 h-4" /> {isExportingCsv ? 'Exporting...' : 'Export All Data (CSV)'}
+              <Button
+                id="settings-export-csv"
+                onClick={handleExportData}
+                disabled={isExportingCsv}
+                variant="secondary"
+                className="flex-1 flex justify-center items-center gap-2"
+              >
+                {isExportingCsv ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Exporting…
+                  </>
+                ) : (
+                  <><Download className="w-4 h-4" />Export All Data (CSV)</>
+                )}
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Danger Zone */}
+        {/* ── Danger Zone ─────────────────────────────────────────────────── */}
         <Card className="border-rose-500/30 bg-rose-500/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-rose-500">
@@ -274,9 +364,16 @@ function SettingsPage() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-medium text-text">Delete Account</p>
-                <p className="text-xs text-text-muted mt-1 max-w-md">Permanently delete your account and all of your data. This action is not reversible, so please continue with caution.</p>
+                <p className="text-xs text-text-muted mt-1 max-w-md">
+                  Permanently delete your account and all of your data. This action is not reversible, so please continue with caution.
+                </p>
               </div>
-              <Button onClick={handleDeleteAccount} variant="danger" className="shrink-0 bg-rose-500 hover:bg-rose-600 text-white border-transparent">
+              <Button
+                id="settings-delete-account"
+                onClick={handleDeleteAccount}
+                variant="danger"
+                className="shrink-0 bg-rose-500 hover:bg-rose-600 text-white border-transparent"
+              >
                 Delete Account
               </Button>
             </div>

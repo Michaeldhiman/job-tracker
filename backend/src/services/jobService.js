@@ -1,6 +1,7 @@
 // Business logic for creating, updating, querying, and aggregating jobs.
 import mongoose from "mongoose";
 import Job from "../models/Job.js";
+import ActivityLog from "../models/ActivityLog.js";
 
 // Helper to create consistent error objects with optional extra details.
 const buildError = (message, status = 400, details) => {
@@ -31,12 +32,27 @@ export const createJob = async (userId, payload) => {
     throw buildError("Validation failed", 400, errors);
   }
 
+  // Only default appliedDate to today if status is NOT Wishlist
+  const initialAppliedDate = payload.status === "Wishlist"
+    ? (payload.appliedDate || null)
+    : (payload.appliedDate || new Date());
+
   const job = await Job.create({
     ...payload,
     userId,
-    // Default `appliedDate` to now if not provided.
-    appliedDate: payload.appliedDate || new Date()
+    appliedDate: initialAppliedDate
   });
+
+  try {
+    await ActivityLog.create({
+      userId,
+      jobId: job._id,
+      action: "Job Added",
+      details: `Added application for ${job.role} at ${job.company}`
+    });
+  } catch (err) {
+    console.error("Failed to create ActivityLog for createJob:", err);
+  }
 
   return job;
 };
@@ -58,6 +74,7 @@ export const getJobs = async (userId, { status, search, page = 1, limit = 10 }) 
 
   const [jobs, total] = await Promise.all([
     Job.find(query)
+      .populate("resumeId")
       // Sort by appliedDate (descending), but jobs without appliedDate will use createdAt
       // Using a compound sort that handles null values properly
       .sort({ 
@@ -79,7 +96,7 @@ export const getJobById = async (userId, jobId) => {
     throw buildError("Invalid job ID format", 400);
   }
 
-  const job = await Job.findOne({ _id: jobId, userId });
+  const job = await Job.findOne({ _id: jobId, userId }).populate("resumeId");
   if (!job) {
     throw buildError("Job not found", 404);
   }
@@ -100,8 +117,37 @@ export const updateJob = async (userId, jobId, payload) => {
     throw buildError("Job not found", 404);
   }
 
+  const oldStatus = job.status;
+  
+  // If moving from Wishlist to an active stage and no applied date is set or provided, set it to today.
+  if (payload.status && payload.status !== "Wishlist" && oldStatus === "Wishlist" && !job.appliedDate && !payload.appliedDate) {
+    payload.appliedDate = new Date();
+  }
+
   Object.assign(job, payload);
-  return job.save();
+  const savedJob = await job.save();
+
+  try {
+    if (payload.status && payload.status !== oldStatus) {
+      await ActivityLog.create({
+        userId,
+        jobId: savedJob._id,
+        action: "Status Updated",
+        details: `Moved ${savedJob.role} at ${savedJob.company} to ${payload.status}`
+      });
+    } else {
+      await ActivityLog.create({
+        userId,
+        jobId: savedJob._id,
+        action: "Job Updated",
+        details: `Updated details for ${savedJob.role} at ${savedJob.company}`
+      });
+    }
+  } catch (err) {
+    console.error("Failed to create ActivityLog for updateJob:", err);
+  }
+
+  return savedJob.populate("resumeId");
 };
 
 // Delete a job document owned by the user.
@@ -111,13 +157,24 @@ export const deleteJob = async (userId, jobId) => {
     throw buildError("Invalid job ID format", 400);
   }
 
-  const result = await Job.findOneAndDelete({ _id: jobId, userId });
-
-  if (!result) {
+  const job = await Job.findOne({ _id: jobId, userId });
+  if (!job) {
     throw buildError("Job not found", 404);
   }
 
-  return result;
+  await Job.deleteOne({ _id: jobId });
+
+  try {
+    await ActivityLog.create({
+      userId,
+      action: "Job Deleted",
+      details: `Removed application for ${job.role} at ${job.company}`
+    });
+  } catch (err) {
+    console.error("Failed to create ActivityLog for deleteJob:", err);
+  }
+
+  return job;
 };
 
 // Attach or replace a resume URL for a specific job.
@@ -135,6 +192,17 @@ export const attachResume = async (userId, jobId, resumeUrl) => {
 
   if (!job) {
     throw buildError("Job not found", 404);
+  }
+
+  try {
+    await ActivityLog.create({
+      userId,
+      jobId: job._id,
+      action: "Resume Attached",
+      details: `Attached resume to ${job.role} at ${job.company}`
+    });
+  } catch (err) {
+    console.error("Failed to create ActivityLog for attachResume:", err);
   }
 
   return job;

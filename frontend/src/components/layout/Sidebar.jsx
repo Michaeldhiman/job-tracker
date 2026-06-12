@@ -4,11 +4,11 @@ import { LayoutDashboard, KanbanSquare, LineChart, Calendar, FileText, Building2
 
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/jobs', label: 'Kanban Board', icon: KanbanSquare },
+  { path: '/jobs', label: 'Applications', icon: KanbanSquare },
   { path: '/analytics', label: 'Analytics', icon: LineChart },
-  { path: '/calendar', label: 'Calendar', icon: Calendar },
-  { path: '/resumes', label: 'Resumes', icon: FileText },
-  { path: '/companies', label: 'Companies', icon: Building2 },
+  { path: '/calendar', label: 'Interviews', icon: Calendar },
+  { path: '/resumes', label: 'Resume Library', icon: FileText },
+  { path: '/companies', label: 'Company CRM', icon: Building2 },
 ];
 
 const navLinkClass = ({ isActive }) =>
@@ -56,7 +56,7 @@ function Sidebar({ isOpen, onClose }) {
         <div className="h-16 flex items-center justify-between px-5 border-b border-border shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-md bg-gradient-to-br from-primary to-emerald-500 shadow-glass"></div>
-            <span className="font-semibold text-text tracking-tight">Obsidian CRM</span>
+            <span className="font-semibold text-text tracking-tight">Snap Job</span>
           </div>
           <button
             onClick={onClose}

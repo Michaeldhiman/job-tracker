@@ -85,10 +85,102 @@ export const updateProfileHandler = async (req, res, next) => {
   }
 };
 
+import jwt from "jsonwebtoken";
+import axios from "axios";
+import crypto from "crypto";
+import User from "../models/User.js";
+import { config, requireConfig } from "../config/runtimeConfig.js";
+
 export const deleteAccountHandler = async (req, res, next) => {
   try {
     await deleteAccount(req.userId);
     res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/auth/google
+// Redirects user to Google OAuth consent screen for login/registration.
+export const initGoogleAuth = async (req, res, next) => {
+  try {
+    const clientId = requireConfig(process.env.GOOGLE_CLIENT_ID, "GOOGLE_CLIENT_ID");
+    const redirectUri = requireConfig(process.env.GOOGLE_LOGIN_REDIRECT_URI, "GOOGLE_LOGIN_REDIRECT_URI");
+    
+    const scope = "openid email profile";
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${clientId}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `response_type=code&` +
+      `scope=${encodeURIComponent(scope)}&` +
+      `prompt=select_account`;
+
+    res.redirect(authUrl);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/auth/google/callback
+// Handles callback from Google, authenticates/creates user, and redirects to frontend with credentials.
+export const googleAuthCallback = async (req, res, next) => {
+  try {
+    const { code } = req.query;
+    if (!code) {
+      return res.status(400).json({ success: false, message: "Code required" });
+    }
+
+    const clientId = requireConfig(process.env.GOOGLE_CLIENT_ID, "GOOGLE_CLIENT_ID");
+    const clientSecret = requireConfig(process.env.GOOGLE_CLIENT_SECRET, "GOOGLE_CLIENT_SECRET");
+    const redirectUri = requireConfig(process.env.GOOGLE_LOGIN_REDIRECT_URI, "GOOGLE_LOGIN_REDIRECT_URI");
+
+    const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+    });
+
+    const accessToken = tokenResponse.data.access_token;
+
+    const profileResponse = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    const { email, name } = profileResponse.data;
+    if (!email) {
+      throw new Error("Failed to retrieve email from Google profile");
+    }
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      // Create user with a secure random password
+      const randomPassword = crypto.randomBytes(24).toString("hex");
+      user = await User.create({
+        name: name || email.split("@")[0],
+        email,
+        password: randomPassword
+      });
+    }
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: config.auth.jwtExpiresIn
+    });
+
+    const frontendUrl = requireConfig(config.frontendUrl, "FRONTEND_URL");
+    const sanitizeUser = (u) => ({
+      id: u._id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      theme: u.theme || 'system',
+      emailNotifs: u.emailNotifs ?? true,
+      interviewReminders: u.interviewReminders ?? true,
+    });
+
+    const userParam = encodeURIComponent(JSON.stringify(sanitizeUser(user)));
+    res.redirect(`${frontendUrl}/login?token=${token}&user=${userParam}`);
   } catch (error) {
     next(error);
   }

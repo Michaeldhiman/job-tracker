@@ -11,7 +11,6 @@ import {
 } from "../services/jobService.js";
 import { generateCsv } from "../utils/csvUtil.js";
 import { uploadToCloudinary } from "../fileUpload/cloudinary.js";
-import fs from "fs";
 import csvParser from "csv-parser";
 import { Readable } from "stream";
 
@@ -97,8 +96,7 @@ export const uploadResumeHandler = async (req, res, next) => {
         // Upload the file buffer to Cloudinary.
         const { url } = await uploadToCloudinary(
           req.file.buffer,
-          req.file.originalname,
-          "resumes"
+          req.file.originalname
         );
         resumeUrl = url;
       } catch (cloudinaryError) {

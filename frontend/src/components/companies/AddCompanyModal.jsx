@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Building2, MapPin, Link as LinkIcon, Briefcase, AlignLeft, AlertCircle } from 'lucide-react';
 import axiosClient from '../../api/axiosClient.js';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../ui/Card.jsx';
+import { useToast } from '../../context/ToastContext.jsx';
 
 const companySchema = z.object({
   name: z.string().min(2, "Company name must be at least 2 characters"),
@@ -19,6 +20,7 @@ const companySchema = z.object({
 export default function AddCompanyModal({ isOpen, onClose, onSuccess }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const { success: toastSuccess, error: toastError } = useToast();
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm({
     resolver: zodResolver(companySchema)
@@ -40,9 +42,12 @@ export default function AddCompanyModal({ isOpen, onClose, onSuccess }) {
 
       await axiosClient.post('/api/companies', payload);
       reset();
+      toastSuccess(`${data.name} added to your CRM`, 'Company added');
       onSuccess();
     } catch (err) {
-      setError(err.response?.data?.message || err.message || "Failed to add company");
+      const msg = err.response?.data?.message || err.message || "Failed to add company";
+      setError(msg);
+      toastError(msg, 'Failed to add company');
     } finally {
       setIsSubmitting(false);
     }

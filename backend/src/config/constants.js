@@ -1,0 +1,37 @@
+// Business Rules and Application Constants
+export const REQUEST_LIMITS = {
+  BODY_LIMIT: "10kb",
+  DEFAULT_PAGE: 20,
+  EXPORT_JOB_LIMIT: 1000,
+};
+
+export const UPLOAD_LIMITS = {
+  MAX_FILE_SIZE_BYTES: 5 * 1024 * 1024, // 5MB
+};
+
+export const CLOUDINARY_FOLDERS = {
+  RESUMES: "resumes",
+};
+
+export const AUTH_DEFAULTS = {
+  JWT_EXPIRES_IN: "7d",
+  GOOGLE_STATE_EXPIRES_IN: "15m",
+};
+
+export const DATABASE_DEFAULTS = {
+  SERVER_SELECTION_TIMEOUT_MS: 5000,
+};
+
+export const SCHEDULER_DEFAULTS = {
+  REMINDER_WINDOW_MINUTES: 15,
+  REMINDER_24H_LEAD_MINUTES: 24 * 60,
+  REMINDER_1H_LEAD_MINUTES: 60,
+};
+
+export const GOOGLE_CALENDAR_DEFAULTS = {
+  TOKEN_REFRESH_SKEW_MS: 5 * 60 * 1000, // 5 minutes
+  SYNC_PAST_DAYS: 30,
+  SYNC_MAX_RESULTS: 2500,
+  REMINDER_EMAIL_MINUTES: 24 * 60, // 24 hours
+  REMINDER_POPUP_MINUTES: [60, 15], // 1 hour, 15 minutes
+};

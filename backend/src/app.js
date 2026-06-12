@@ -6,11 +6,12 @@ import dotenv from "dotenv";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
+import mongoose from "mongoose";
+import { config } from "./config/runtimeConfig.js";
 
 import authRoutes from "./routes/auth.routes.js";
 import jobRoutes from "./routes/jobs.routes.js";
 import errorHandler from "./middleware/errorHandler.js";
-import { uploadsDir } from "./utils/pathHelper.js";
 
 // Load environment variables from `.env` into `process.env`.
 dotenv.config();
@@ -18,32 +19,24 @@ dotenv.config();
 // Create a single Express application instance that will be used by `server.js`.
 const app = express();
 
-// Enable CORS for the frontend URL so the browser can call this API.
-const allowedOrigins = ["http://localhost:3000", "http://localhost:5173"];
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-}
+// Enable CORS for configured local, preview, and production URLs.
+const allowedOrigins = config.cors.origins;
 
-const corsOptions = {
+app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
-    if (!origin) return callback(null, true);
-    
-    // Check allowed origins with normalized trailing slashes
-    const isAllowed = allowedOrigins.some(allowed => {
-      return allowed.replace(/\/$/, "") === origin.replace(/\/$/, "");
-    });
+    const isAllowed =
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      (config.cors.allowLocalhost && origin.startsWith("http://localhost:"));
 
-    if (isAllowed || origin.endsWith(".vercel.app") || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+    if (isAllowed) {
       callback(null, true);
     } else {
       callback(new Error(`CORS Error: Origin ${origin} not allowed`));
     }
   },
   credentials: true
-};
-
-app.use(cors(corsOptions));
+}));
 
 // Security Middlewares
 app.use(helmet());
@@ -51,21 +44,20 @@ app.use(mongoSanitize());
 
 // Rate Limiting
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // limit each IP to 1000 requests per windowMs
-  message: "Too many requests from this IP, please try again after 15 minutes"
+  windowMs: config.request.rateLimitWindowMs,
+  max: config.request.rateLimitMax,
+  message: "Too many requests from this IP, please try again later"
 });
 app.use("/api/", apiLimiter);
 
 // Parse incoming JSON and URL‑encoded payloads.
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true, limit: "10kb" }));
+app.use(express.json({ limit: config.request.bodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: config.request.bodyLimit }));
 
 // HTTP request logging in the console (dev-friendly format).
 app.use(morgan("dev"));
 
-// Expose uploaded files under `/uploads` URL path.
-app.use("/uploads", express.static(uploadsDir));
+
 
 import searchRoutes from "./routes/search.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
@@ -73,13 +65,24 @@ import companyRoutes from "./routes/company.routes.js";
 import resumeRoutes from "./routes/resume.routes.js";
 import activityLogRoutes from "./routes/activityLog.routes.js";
 import exportRoutes from "./routes/export.routes.js";
+import calendarRoutes from "./routes/calendar.routes.js";
+import contactRoutes from "./routes/contact.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
 
 // Health check endpoint
 app.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "OK",
-    message: "Server is running",
-    timestamp: new Date().toISOString()
+  const dbState = mongoose.connection.readyState;
+  const isDbHealthy = dbState === 1; // 1 = connected
+  const statusCode = isDbHealthy ? 200 : 500;
+  
+  res.status(statusCode).json({
+    status: isDbHealthy ? "OK" : "ERROR",
+    message: isDbHealthy ? "Server is running and database is connected" : "Database connection issue",
+    timestamp: new Date().toISOString(),
+    services: {
+      server: "UP",
+      database: isDbHealthy ? "UP" : "DOWN"
+    }
   });
 });
 
@@ -92,6 +95,9 @@ app.use("/api/companies", companyRoutes);
 app.use("/api/resumes", resumeRoutes);
 app.use("/api/activity-logs", activityLogRoutes);
 app.use("/api/export", exportRoutes);
+app.use("/api/calendar", calendarRoutes);
+app.use("/api/contact", contactRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Global error handler should be registered after all routes and middleware.
 app.use(errorHandler);

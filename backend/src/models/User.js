@@ -42,12 +42,19 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
-    weeklyDigest: {
+    // Google Calendar OAuth integration
+    googleCalendarConnected: {
       type: Boolean,
       default: false
     },
-    lastWeeklyDigestSentAt: {
-      type: Date
+    googleCalendarEmail: {
+      type: String,
+      trim: true,
+      default: null
+    },
+    calendarConnectionDate: {
+      type: Date,
+      default: null
     }
   },
   {
