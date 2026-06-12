@@ -230,40 +230,68 @@ function DashboardPage() {
                 <p className="text-sm text-text-muted">No applications found</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-border/85 pb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      <th className="py-3 px-2">Role & Company</th>
-                      <th className="py-3 px-2">Date Applied</th>
-                      <th className="py-3 px-2">Stage</th>
-                      <th className="py-3 px-2">Priority</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40 text-sm">
-                    {recentJobs.map(job => (
-                      <tr key={job._id} className="hover:bg-white/5 transition-colors">
-                        <td className="py-3.5 px-2">
-                          <div className="font-semibold text-text">{job.role}</div>
-                          <div className="text-xs text-text-muted">{job.company}</div>
-                        </td>
-                        <td className="py-3.5 px-2 text-text-muted">
-                          {job.appliedDate ? new Date(job.appliedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
-                        </td>
-                        <td className="py-3.5 px-2">
-                          <span className={`inline-block px-2.5 py-0.5 rounded text-xs font-semibold ${getStatusColor(job.status)}`}>
-                            {job.status}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-2">
-                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${getPriorityColor(job.priority)}`}>
-                            {job.priority || 'Medium'}
-                          </span>
-                        </td>
+              <div className="w-full">
+                {/* Mobile Cards */}
+                <div className="md:hidden flex flex-col gap-3">
+                  {recentJobs.map(job => (
+                    <div key={job._id} className="p-4 rounded-xl border border-border bg-surface flex flex-col gap-3 hover:border-primary/30 transition-colors">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="min-w-0">
+                          <div className="font-bold text-text truncate">{job.role}</div>
+                          <div className="text-sm text-text-muted truncate">{job.company}</div>
+                        </div>
+                        <span className={`shrink-0 inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${getPriorityColor(job.priority)}`}>
+                          {job.priority || 'Medium'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-border/60 pt-3">
+                        <span className="text-xs font-medium text-text-muted">
+                          {job.appliedDate ? new Date(job.appliedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}
+                        </span>
+                        <span className={`inline-block px-2.5 py-1 rounded-md text-xs font-bold ${getStatusColor(job.status)}`}>
+                          {job.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-border/85 pb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                        <th className="py-3 px-2">Role & Company</th>
+                        <th className="py-3 px-2">Date Applied</th>
+                        <th className="py-3 px-2">Stage</th>
+                        <th className="py-3 px-2">Priority</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-border/40 text-sm">
+                      {recentJobs.map(job => (
+                        <tr key={job._id} className="hover:bg-white/5 transition-colors">
+                          <td className="py-3.5 px-2">
+                            <div className="font-semibold text-text">{job.role}</div>
+                            <div className="text-xs text-text-muted">{job.company}</div>
+                          </td>
+                          <td className="py-3.5 px-2 text-text-muted">
+                            {job.appliedDate ? new Date(job.appliedDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                          </td>
+                          <td className="py-3.5 px-2">
+                            <span className={`inline-block px-2.5 py-0.5 rounded text-xs font-semibold ${getStatusColor(job.status)}`}>
+                              {job.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-2">
+                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${getPriorityColor(job.priority)}`}>
+                              {job.priority || 'Medium'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </CardContent>

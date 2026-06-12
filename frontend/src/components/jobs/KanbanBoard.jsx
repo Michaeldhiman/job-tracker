@@ -125,35 +125,79 @@ export default function KanbanBoard({ initialJobs, onJobClick }) {
     setActiveJob(null);
   };
 
+  const [activeTab, setActiveTab] = useState(COLUMNS[0].id);
+
   const columnsWithJobs = COLUMNS.map(col => ({
     ...col,
     jobs: jobs.filter(j => j.status === col.id)
   }));
 
+  const handleStatusChange = async (jobId, newStatus) => {
+    try {
+      await updateJob(jobId, { status: newStatus });
+      setJobs(prev => prev.map(j => j._id === jobId ? { ...j, status: newStatus } : j));
+    } catch (error) {
+      console.error('Failed to update job status', error);
+    }
+  };
+
   return (
-    <div className="flex h-[calc(100vh-12rem)] w-full overflow-x-auto overflow-y-hidden gap-4 pb-4 px-1">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex gap-4 h-full">
-          {columnsWithJobs.map(column => (
-            <KanbanColumn 
-              key={column.id} 
-              column={column} 
-              jobs={column.jobs} 
-              onJobClick={onJobClick}
-            />
-          ))}
-        </div>
-        
-        <DragOverlay>
-          {activeJob ? <KanbanCard job={activeJob} /> : null}
-        </DragOverlay>
-      </DndContext>
+    <div className="flex flex-col h-[calc(100vh-12rem)] w-full gap-4">
+      {/* Mobile Tab Bar */}
+      <div className="lg:hidden flex overflow-x-auto custom-scrollbar pb-2 gap-2 snap-x px-1">
+        {COLUMNS.map(col => {
+          const count = columnsWithJobs.find(c => c.id === col.id)?.jobs.length || 0;
+          return (
+            <button
+              key={col.id}
+              onClick={() => setActiveTab(col.id)}
+              className={`shrink-0 snap-center px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === col.id ? 'bg-primary text-white shadow-md' : 'bg-surface border border-border text-text-muted hover:bg-surface-elevated'}`}
+            >
+              {col.title} <span className="ml-1 opacity-70">({count})</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4 px-1">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          {/* Desktop View: All Columns */}
+          <div className="hidden lg:flex gap-4 h-full">
+            {columnsWithJobs.map(column => (
+              <KanbanColumn 
+                key={column.id} 
+                column={column} 
+                jobs={column.jobs} 
+                onJobClick={onJobClick}
+                onStatusChange={handleStatusChange}
+              />
+            ))}
+          </div>
+
+          {/* Mobile View: Single Column */}
+          <div className="flex lg:hidden h-full w-full">
+            {columnsWithJobs.filter(c => c.id === activeTab).map(column => (
+              <KanbanColumn 
+                key={column.id} 
+                column={column} 
+                jobs={column.jobs} 
+                onJobClick={onJobClick}
+                onStatusChange={handleStatusChange}
+              />
+            ))}
+          </div>
+          
+          <DragOverlay>
+            {activeJob ? <KanbanCard job={activeJob} /> : null}
+          </DragOverlay>
+        </DndContext>
+      </div>
     </div>
   );
 }

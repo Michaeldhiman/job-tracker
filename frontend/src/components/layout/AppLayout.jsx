@@ -24,7 +24,7 @@ function AppLayout({ children }) {
   }
 
   return (
-    <div className="h-screen w-full bg-background flex overflow-hidden">
+    <div className="h-[100dvh] w-full bg-background flex overflow-hidden">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col min-w-0">
         <TopNavbar onMenuClick={() => setSidebarOpen(true)} />

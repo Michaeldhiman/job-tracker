@@ -186,7 +186,7 @@ function TopNavbar({ onMenuClick }) {
       <div className="flex items-center gap-3 flex-1">
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 -ml-2 text-text-muted hover:text-text transition-colors"
+          className="lg:hidden p-3 -ml-3 text-text-muted hover:text-text transition-colors"
           aria-label="Open menu"
         >
           <Menu className="w-5 h-5" />
@@ -226,7 +226,7 @@ function TopNavbar({ onMenuClick }) {
           {/* ── Notification Panel ────────────────────────── */}
           {showNotifications && (
             <div
-              className="absolute right-0 top-[calc(100%+8px)] w-96 rounded-2xl border border-border shadow-2xl overflow-hidden z-50"
+              className="absolute -right-2 sm:right-0 top-[calc(100%+8px)] w-[calc(100vw-2rem)] max-w-sm sm:max-w-md sm:w-96 rounded-2xl border border-border shadow-2xl overflow-hidden z-50"
               style={{
                 background: 'rgb(var(--color-surface) / 0.95)',
                 backdropFilter: 'blur(20px)',

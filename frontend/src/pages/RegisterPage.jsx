@@ -307,7 +307,7 @@ function RegisterPage() {
             <p className="text-zinc-200 text-sm font-semibold">Join Snap Job today</p>
           </div>
 
-          <div className="bg-[#121214]/65 border border-white/10 backdrop-blur-2xl p-9 sm:p-10 rounded-[2rem] shadow-2xl space-y-7 relative overflow-hidden">
+          <div className="bg-[#121214]/65 border border-white/10 backdrop-blur-2xl p-6 sm:p-10 rounded-[2rem] shadow-2xl space-y-7 relative overflow-hidden">
             {/* Glow accent inside the card */}
             <div className="absolute top-0 right-0 w-[120px] h-[120px] bg-primary/10 blur-[50px] rounded-full pointer-events-none" />
 

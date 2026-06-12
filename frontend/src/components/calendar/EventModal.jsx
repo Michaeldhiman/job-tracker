@@ -99,10 +99,10 @@ export default function EventModal({ isOpen, onClose, event, onDelete, onEditJob
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-lg glass-panel rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            className="relative w-full max-w-lg max-h-[90vh] glass-panel rounded-2xl shadow-2xl flex flex-col"
           >
             {/* Header */}
-            <div className="p-6 border-b border-border flex items-start justify-between">
+            <div className="p-6 border-b border-border flex items-start justify-between shrink-0">
               <div>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getTypeStyle(type)} mb-3`}>
                   {getLabel(type)}
@@ -124,7 +124,7 @@ export default function EventModal({ isOpen, onClose, event, onDelete, onEditJob
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
               <div className="flex flex-col gap-4">
                 {/* Date & Time */}
                 <div className="flex items-start gap-3">

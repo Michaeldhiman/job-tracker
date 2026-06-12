@@ -609,7 +609,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Dashboard layout content mockup */}
-                <div className="grid grid-cols-12 gap-3 p-4 bg-[#09090b]/80 h-[380px] sm:h-[500px] overflow-hidden rounded-b-xl">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 bg-[#09090b]/80 min-h-[380px] sm:h-[500px] overflow-hidden rounded-b-xl">
                   {/* Left Sidebar mockup */}
                   <div className="col-span-3 border-r border-white/5 p-2 hidden md:flex flex-col gap-3.5">
                     <div className="h-7 w-36 bg-white/5 rounded-lg border border-white/5 mb-3" />
@@ -1362,7 +1362,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="flex md:grid overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none md:grid-cols-3 gap-6 md:gap-8 pb-6 md:pb-0 custom-scrollbar">
               {[
                 { name: "Sarah C.", role: "New Grad SWE @ Google", quote: "I applied to 140 places. Without Snap Job, I would have dropped the ball on half my interviews. The Kanban board is a lifesaver.", img: "S", glow: "rgba(79, 70, 229, 0.12)" },
                 { name: "Marcus J.", role: "Product Manager", quote: "The analytics showed me I was failing at the HR screen. I adjusted my pitch, and my offer rate skyrocketed next month.", img: "M", glow: "rgba(16, 185, 129, 0.08)" },
@@ -1371,12 +1371,12 @@ export default function LandingPage() {
                 <Card3DTilt 
                   key={i} 
                   glowColor={test.glow}
-                  className="p-8 rounded-3xl bg-[#121214]/65 border border-white/10 hover:border-white/20 transition-colors relative flex flex-col justify-between h-80"
+                  className="p-8 rounded-3xl bg-[#121214]/65 border border-white/10 hover:border-white/20 transition-colors relative flex flex-col justify-between h-80 shrink-0 w-[85vw] md:w-auto snap-center md:snap-align-none"
                 >
                   <div>
                     <div className="flex gap-1 mb-6">
                       {[1,2,3,4,5].map(s => (
-                        <svg key={s} className="w-4 h-4 text-amber-500 fill-amber-500" viewBox="0 0 20 20">
+                        <svg key={s} className="w-4 h-4 text-amber-500 fill-amber-500 shrink-0" viewBox="0 0 20 20">
                           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                         </svg>
                       ))}
@@ -1384,7 +1384,7 @@ export default function LandingPage() {
                     <p className="text-sm text-zinc-300 leading-relaxed">"{test.quote}"</p>
                   </div>
                   <div className="flex items-center gap-3.5 border-t border-white/5 pt-5 mt-4">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-emerald-500 flex items-center justify-center text-white font-extrabold text-sm shadow-md shrink-0">
                       {test.img}
                     </div>
                     <div>

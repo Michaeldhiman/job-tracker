@@ -4,7 +4,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { MoreHorizontal, Calendar, Building2 } from 'lucide-react';
 import clsx from 'clsx';
 
-export default function KanbanCard({ job, onClick }) {
+const STATUSES = ['Wishlist', 'Applied', 'OA', 'Screening', 'Technical', 'HR', 'Offer', 'Rejected'];
+
+export default function KanbanCard({ job, onClick, onStatusChange }) {
   const {
     setNodeRef,
     attributes,
@@ -23,6 +25,13 @@ export default function KanbanCard({ job, onClick }) {
   const style = {
     transition,
     transform: CSS.Transform.toString(transform),
+  };
+
+  const handleStatusSelect = (e) => {
+    e.stopPropagation();
+    if (onStatusChange) {
+      onStatusChange(job._id, e.target.value);
+    }
   };
 
   return (
@@ -44,9 +53,22 @@ export default function KanbanCard({ job, onClick }) {
           </div>
           <span className="font-semibold text-text text-sm truncate">{job.company}</span>
         </div>
-        <button className="text-text-muted hover:text-text opacity-0 group-hover:opacity-100 transition-opacity">
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
+        <div className="relative">
+          <button className="text-text-muted hover:text-text opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+            <MoreHorizontal className="w-4 h-4" />
+          </button>
+          <select 
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            value={job.status}
+            onChange={handleStatusSelect}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <option disabled value="">Change Status</option>
+            {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
       </div>
       
       <p className="text-text text-sm mb-3 font-medium line-clamp-2 leading-tight">

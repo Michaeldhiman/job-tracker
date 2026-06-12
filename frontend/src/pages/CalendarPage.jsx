@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay, isToday, isAfter, startOfDay } from 'date-fns';
+import { format, parse, startOfWeek, getDay, isToday, isAfter, startOfDay, isTomorrow, isSameWeek } from 'date-fns';
 import enUS from 'date-fns/locale/en-US';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { searchJobs } from '../api/jobsApi.js';
@@ -204,19 +204,29 @@ export default function CalendarPage() {
   };
 
   const todayEvents = events.filter(e => isToday(new Date(e.start)));
+  const tomorrowEvents = events.filter(e => isTomorrow(new Date(e.start)));
   
   // Only show upcoming events for the current month and the next month
   const now = new Date();
   const limitDate = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59, 999);
   
+  const thisWeekEvents = events
+    .filter(e => {
+      const eventDate = new Date(e.start);
+      return isSameWeek(eventDate, now) && isAfter(eventDate, startOfDay(now)) && !isToday(eventDate) && !isTomorrow(eventDate);
+    })
+    .sort((a, b) => new Date(a.start) - new Date(b.start));
+
   const upcomingEvents = events
     .filter(e => {
       const eventDate = new Date(e.start);
       return isAfter(eventDate, startOfDay(now)) && 
              !isToday(eventDate) && 
+             !isTomorrow(eventDate) &&
+             !isSameWeek(eventDate, now) &&
              eventDate <= limitDate;
     })
-    .sort((a, b) => new Date(a.start) - new Date(b.start))
+    .sort((a, b) => new Date(a.start) - new Date(b.start));
   const handleSelectSlot = ({ start }) => {
     const localDateString = format(start, 'yyyy-MM-dd');
     setSelectedDateForNewEvent(localDateString);
@@ -327,6 +337,47 @@ export default function CalendarPage() {
 
           <div className="glass-panel p-5 rounded-2xl flex flex-col gap-4">
             <h3 className="font-semibold text-text flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-emerald-500" /> Tomorrow
+            </h3>
+            {tomorrowEvents.length > 0 ? (
+              <div className="space-y-3">
+                {tomorrowEvents.map((evt, i) => (
+                  <div key={i} onClick={() => setSelectedEvent(evt)} className="p-3 rounded-xl bg-surface hover:bg-surface-elevated border border-border cursor-pointer transition-colors flex flex-col gap-1">
+                    <span className="text-xs font-semibold text-primary uppercase tracking-wider">{evt.type}</span>
+                    <span className="text-sm font-medium text-text line-clamp-1">
+                      {evt.type === 'custom' ? evt.title : `${evt.resource.role} at ${evt.resource.company}`}
+                    </span>
+                    <span className="text-xs text-text-muted">{format(new Date(evt.start), 'h:mm a')}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted italic px-2">No events tomorrow.</p>
+            )}
+          </div>
+
+          <div className="glass-panel p-5 rounded-2xl flex flex-col gap-4">
+            <h3 className="font-semibold text-text flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-blue-500" /> This Week
+            </h3>
+            {thisWeekEvents.length > 0 ? (
+              <div className="space-y-3">
+                {thisWeekEvents.map((evt, i) => (
+                  <div key={i} onClick={() => setSelectedEvent(evt)} className="p-3 rounded-xl bg-surface hover:bg-surface-elevated border border-border cursor-pointer transition-colors flex flex-col gap-1">
+                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">{format(new Date(evt.start), 'EEEE, h:mm a')}</span>
+                    <span className="text-sm font-medium text-text line-clamp-1">
+                      {evt.type === 'custom' ? evt.title : `${evt.resource.role} at ${evt.resource.company}`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted italic px-2">No other events this week.</p>
+            )}
+          </div>
+
+          <div className="glass-panel p-5 rounded-2xl flex flex-col gap-4">
+            <h3 className="font-semibold text-text flex items-center gap-2">
               <CalendarClock className="w-4 h-4 text-amber-500" /> Upcoming
             </h3>
             <div className="space-y-3">
@@ -351,7 +402,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Main Calendar View */}
-        <div className="flex-1 glass-card rounded-2xl p-6">
+        <div className="hidden lg:block flex-1 glass-card rounded-2xl p-6">
           {loading ? (
             <CalendarGridSkeleton />
           ) : (

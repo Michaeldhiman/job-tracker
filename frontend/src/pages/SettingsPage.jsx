@@ -243,7 +243,7 @@ function SettingsPage() {
               </div>
             </div>
             <div className="pt-2 flex justify-end">
-              <Button id="settings-save-profile" onClick={handleSaveProfile} disabled={isSaving} className="min-w-[120px] justify-center">
+              <Button id="settings-save-profile" onClick={handleSaveProfile} disabled={isSaving} className="w-full sm:w-auto min-w-[120px] justify-center">
                 {isSaving ? (
                   <>
                     <svg className="animate-spin w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none">
@@ -372,7 +372,7 @@ function SettingsPage() {
                 id="settings-delete-account"
                 onClick={handleDeleteAccount}
                 variant="danger"
-                className="shrink-0 bg-rose-500 hover:bg-rose-600 text-white border-transparent"
+                className="shrink-0 w-full sm:w-auto bg-rose-500 hover:bg-rose-600 text-white border-transparent justify-center"
               >
                 Delete Account
               </Button>

@@ -162,7 +162,7 @@ function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {funnelData.length === 0 ? <EmptyChart message="No pipeline data" /> : (
-              <div className="h-80 w-full">
+              <div className="h-[320px] md:h-[380px] lg:h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={funnelData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" horizontal vertical={false} />
@@ -188,7 +188,7 @@ function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {pieData.length === 0 ? <EmptyChart message="No status data" /> : (
-              <div className="h-80 w-full">
+              <div className="h-[320px] md:h-[380px] lg:h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={3} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} fontSize={11}>
@@ -215,7 +215,7 @@ function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {trendsData.length === 0 ? <EmptyChart message="No trend data yet" /> : (
-              <div className="h-80 w-full">
+              <div className="h-[320px] md:h-[380px] lg:h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={trendsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                     <defs>
@@ -243,7 +243,7 @@ function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             {conversionStages.length === 0 ? <EmptyChart message="No conversion data" /> : (
-              <div className="h-80 w-full">
+              <div className="h-[320px] md:h-[380px] lg:h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={conversionStages} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />

@@ -3,7 +3,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core';
 import KanbanCard from './KanbanCard.jsx';
 
-export default function KanbanColumn({ column, jobs, onJobClick }) {
+export default function KanbanColumn({ column, jobs, onJobClick, onStatusChange }) {
   const jobsIds = useMemo(() => jobs.map((j) => j._id), [jobs]);
 
   const { setNodeRef } = useDroppable({
@@ -15,7 +15,7 @@ export default function KanbanColumn({ column, jobs, onJobClick }) {
   });
 
   return (
-    <div className="flex flex-col bg-surface-elevated/50 border border-border w-80 rounded-xl flex-shrink-0 h-full overflow-hidden">
+    <div className="flex flex-col bg-surface-elevated/50 border border-border w-[calc(100vw-1.5rem)] lg:w-80 rounded-xl flex-shrink-0 h-full overflow-hidden">
       <div className="p-3 border-b border-border flex items-center justify-between bg-surface-elevated sticky top-0 z-10">
         <h3 className="font-semibold text-text text-sm tracking-wide">{column.title}</h3>
         <span className="bg-background px-2 py-0.5 rounded-full text-xs font-medium text-text-muted border border-border">
@@ -28,7 +28,7 @@ export default function KanbanColumn({ column, jobs, onJobClick }) {
       >
         <SortableContext items={jobsIds} strategy={verticalListSortingStrategy}>
           {jobs.map(job => (
-            <KanbanCard key={job._id} job={job} onClick={() => onJobClick(job)} />
+            <KanbanCard key={job._id} job={job} onClick={() => onJobClick(job)} onStatusChange={onStatusChange} />
           ))}
         </SortableContext>
       </div>

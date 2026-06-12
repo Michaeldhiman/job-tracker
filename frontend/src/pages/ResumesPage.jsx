@@ -553,7 +553,7 @@ function ResumesPage() {
                 {!stats.resumeUsage || stats.resumeUsage.length === 0 ? (
                   <div className="py-12 text-center text-text-muted text-sm">No usage data available</div>
                 ) : (
-                  <div className="h-80 w-full">
+                  <div className="h-[320px] md:h-80 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={stats.resumeUsage} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" horizontal vertical={false} />
@@ -581,41 +581,78 @@ function ResumesPage() {
                 {resumes.length === 0 ? (
                   <div className="py-12 text-center text-text-muted text-sm">No resume data available</div>
                 ) : (
-                  <div className="overflow-x-auto custom-scrollbar">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-border text-text-muted uppercase font-bold tracking-wider">
-                          <th className="py-2 pr-2">Resume Template</th>
-                          <th className="py-2 px-2 text-center">Submissions</th>
-                          <th className="py-2 px-2 text-center">Interviews</th>
-                          <th className="py-2 px-2 text-center">Offers</th>
-                          <th className="py-2 pl-2 text-right">Response Rate</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {getResumeLeaderboard().map((r, i) => (
-                          <tr key={r._id} className="border-b border-border/40 hover:bg-white/5 transition-colors">
-                            <td className="py-3 pr-2 font-semibold text-text truncate max-w-[140px]" title={r.name}>
-                              {r.name}
-                            </td>
-                            <td className="py-3 px-2 text-center text-text font-medium">{r.total}</td>
-                            <td className="py-3 px-2 text-center text-emerald-400 font-semibold">{r.responses}</td>
-                            <td className="py-3 px-2 text-center text-amber-400 font-bold">{r.offers}</td>
-                            <td className="py-3 pl-2 text-right">
-                              <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${
-                                r.rate >= 50 
-                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                                  : r.rate >= 25 
-                                    ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
-                                    : 'bg-zinc-500/10 text-text-muted border border-zinc-500/20'
-                              }`}>
-                                {r.rate}%
-                              </span>
-                            </td>
+                  <div className="w-full">
+                    {/* Mobile Cards */}
+                    <div className="md:hidden flex flex-col gap-3">
+                      {getResumeLeaderboard().map((r, i) => (
+                        <div key={r._id} className="p-4 rounded-xl border border-border bg-surface flex flex-col gap-3 hover:border-primary/30 transition-colors">
+                          <div className="flex justify-between items-start gap-2">
+                            <h3 className="font-bold text-text truncate max-w-[200px]" title={r.name}>{r.name}</h3>
+                            <span className={`shrink-0 font-bold px-2.5 py-0.5 rounded-full text-[10px] ${
+                              r.rate >= 50 
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                                : r.rate >= 25 
+                                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
+                                  : 'bg-zinc-500/10 text-text-muted border border-zinc-500/20'
+                            }`}>
+                              {r.rate}% Response
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between border-t border-border/60 pt-3 text-xs">
+                            <div className="text-center">
+                              <div className="text-text font-medium">{r.total}</div>
+                              <div className="text-text-muted text-[10px] uppercase tracking-wider mt-0.5">Subs</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-emerald-400 font-semibold">{r.responses}</div>
+                              <div className="text-text-muted text-[10px] uppercase tracking-wider mt-0.5">Intvs</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-amber-400 font-bold">{r.offers}</div>
+                              <div className="text-text-muted text-[10px] uppercase tracking-wider mt-0.5">Offers</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Desktop Table */}
+                    <div className="hidden md:block overflow-x-auto custom-scrollbar">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="border-b border-border text-text-muted uppercase font-bold tracking-wider">
+                            <th className="py-2 pr-2">Resume Template</th>
+                            <th className="py-2 px-2 text-center">Submissions</th>
+                            <th className="py-2 px-2 text-center">Interviews</th>
+                            <th className="py-2 px-2 text-center">Offers</th>
+                            <th className="py-2 pl-2 text-right">Response Rate</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {getResumeLeaderboard().map((r, i) => (
+                            <tr key={r._id} className="border-b border-border/40 hover:bg-white/5 transition-colors">
+                              <td className="py-3 pr-2 font-semibold text-text truncate max-w-[140px]" title={r.name}>
+                                {r.name}
+                              </td>
+                              <td className="py-3 px-2 text-center text-text font-medium">{r.total}</td>
+                              <td className="py-3 px-2 text-center text-emerald-400 font-semibold">{r.responses}</td>
+                              <td className="py-3 px-2 text-center text-amber-400 font-bold">{r.offers}</td>
+                              <td className="py-3 pl-2 text-right">
+                                <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${
+                                  r.rate >= 50 
+                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                                    : r.rate >= 25 
+                                      ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
+                                      : 'bg-zinc-500/10 text-text-muted border border-zinc-500/20'
+                                }`}>
+                                  {r.rate}%
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </CardContent>
