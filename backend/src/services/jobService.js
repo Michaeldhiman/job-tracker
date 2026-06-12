@@ -17,13 +17,15 @@ const buildError = (message, status = 400, details) => {
 // Mongoose automatically converts string ObjectIds in queries.
 const baseQuery = (userId) => ({ userId });
 
+import { PIPELINE_STATUSES } from "../config/constants.js";
+
 // Create a new job after validating input.
 export const createJob = async (userId, payload) => {
   const { company, status } = payload;
 
   const errors = {};
   if (!company) errors.company = "Company is required";
-  if (status && !["Wishlist", "Applied", "OA", "Screening", "Technical", "HR", "Offer", "Rejected"].includes(status)) {
+  if (status && !PIPELINE_STATUSES.includes(status)) {
     errors.status = "Invalid status";
   }
 
@@ -32,10 +34,8 @@ export const createJob = async (userId, payload) => {
     throw buildError("Validation failed", 400, errors);
   }
 
-  // Only default appliedDate to today if status is NOT Wishlist
-  const initialAppliedDate = payload.status === "Wishlist"
-    ? (payload.appliedDate || null)
-    : (payload.appliedDate || new Date());
+  // Always assign an applied date if not provided since Wishlist is removed
+  const initialAppliedDate = payload.appliedDate || new Date();
 
   const job = await Job.create({
     ...payload,
@@ -118,11 +118,6 @@ export const updateJob = async (userId, jobId, payload) => {
   }
 
   const oldStatus = job.status;
-  
-  // If moving from Wishlist to an active stage and no applied date is set or provided, set it to today.
-  if (payload.status && payload.status !== "Wishlist" && oldStatus === "Wishlist" && !job.appliedDate && !payload.appliedDate) {
-    payload.appliedDate = new Date();
-  }
 
   Object.assign(job, payload);
   const savedJob = await job.save();

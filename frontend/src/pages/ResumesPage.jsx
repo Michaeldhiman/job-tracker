@@ -186,7 +186,7 @@ function ResumesPage() {
   const totalSubmissions = resumes.reduce((acc, r) => acc + (r.usageCount || 0), 0);
   const totalResponses = resumes.reduce((acc, r) => {
     return acc + (r.applications?.filter(app => 
-      ["OA", "Screening", "Technical", "HR", "Offer"].includes(app.status)
+      ["Assessment", "Interview", "Offer"].includes(app.status)
     ).length || 0);
   }, 0);
   const avgResponseRate = totalSubmissions > 0 ? Math.round((totalResponses / totalSubmissions) * 100) : 0;
@@ -196,7 +196,7 @@ function ResumesPage() {
       .map(r => {
         const total = r.usageCount || 0;
         const responses = r.applications?.filter(app => 
-          ["OA", "Screening", "Technical", "HR", "Offer"].includes(app.status)
+          ["Assessment", "Interview", "Offer"].includes(app.status)
         ).length || 0;
         const offers = r.applications?.filter(app => app.status === "Offer").length || 0;
         const rate = total > 0 ? Math.round((responses / total) * 100) : 0;
@@ -365,7 +365,7 @@ function ResumesPage() {
                 // Calculate response rate (OA, Screening, Technical, HR, Offer)
                 const totalApps = resume.usageCount || 0;
                 const successfulApps = resume.applications?.filter(app => 
-                  ["OA", "Screening", "Technical", "HR", "Offer"].includes(app.status)
+                  ["Assessment", "Interview", "Offer"].includes(app.status)
                 ).length || 0;
                 const responseRate = totalApps > 0 ? Math.round((successfulApps / totalApps) * 100) : 0;
 

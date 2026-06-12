@@ -8,10 +8,12 @@ import { createJob, updateJob, getCompanies, getResumes, uploadResumeDirect } fr
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../ui/Card.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 
+import { PIPELINE_STATUSES } from '../../utils/constants.js';
+
 const jobSchema = z.object({
   company: z.string().min(2, "Company name must be at least 2 characters"),
   role: z.string().min(2, "Role must be at least 2 characters"),
-  status: z.enum(["Wishlist", "Applied", "OA", "Screening", "Technical", "HR", "Offer", "Rejected"]).optional(),
+  status: z.enum(["Applied", "Assessment", "Interview", "Offer", "Rejected"]).optional(),
   appliedDate: z.string().optional().nullable().or(z.literal("")),
   source: z.enum(["LinkedIn", "Naukri", "Referral", "Career Page", "Indeed", "Internshala", "Other"]).optional(),
   priority: z.enum(["Low", "Medium", "High"]).optional(),
@@ -137,9 +139,6 @@ export default function AddJobModal({ isOpen, onClose, onSuccess, jobToEdit = nu
     try {
       // Transform data
       const payload = { ...data };
-      if (payload.status === "Wishlist") {
-        payload.appliedDate = null;
-      }
       if (payload.salary) payload.salary = Number(payload.salary);
       if (!payload.salary) delete payload.salary;
       if (payload.tags) {
@@ -255,33 +254,25 @@ export default function AddJobModal({ isOpen, onClose, onSuccess, jobToEdit = nu
                             {...register("status")}
                             className="w-full bg-background border border-border rounded-lg pl-4 pr-10 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all appearance-none cursor-pointer"
                           >
-                            <option value="Wishlist">Wishlist</option>
-                            <option value="Applied">Applied</option>
-                            <option value="OA">Online Assessment (OA)</option>
-                            <option value="Screening">Phone Screening</option>
-                            <option value="Technical">Technical Interview</option>
-                            <option value="HR">HR/Behavioral</option>
-                            <option value="Offer">Offer</option>
-                            <option value="Rejected">Rejected</option>
+                            {PIPELINE_STATUSES.map(status => (
+                              <option key={status} value={status}>{status}</option>
+                            ))}
                           </select>
                           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
                         </div>
                       </div>
 
-                      {selectedStatus !== "Wishlist" && (
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-text">Applied Date</label>
-                          <div className="relative">
-                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                            <input 
-                              type="date"
-                              {...register("appliedDate")}
-                              onClick={(e) => { try { e.target.showPicker(); } catch (err) {} }}
-                              className="w-full bg-background border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer"
-                            />
-                          </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-text">Applied Date</label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+                          <input 
+                            type="date"
+                            {...register("appliedDate")}
+                            className="w-full bg-background border border-border rounded-lg pl-10 pr-4 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all [color-scheme:dark]"
+                          />
                         </div>
-                      )}
+                      </div>
 
                       {/* Details */}
                       <div className="space-y-2">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   DndContext, 
   DragOverlay, 
@@ -6,7 +6,8 @@ import {
   KeyboardSensor, 
   PointerSensor, 
   useSensor, 
-  useSensors 
+  useSensors,
+  defaultDropAnimationSideEffects
 } from '@dnd-kit/core';
 import { 
   SortableContext, 
@@ -17,16 +18,19 @@ import KanbanColumn from './KanbanColumn.jsx';
 import KanbanCard from './KanbanCard.jsx';
 import { updateJob } from '../../api/jobsApi.js';
 
-const COLUMNS = [
-  { id: 'Wishlist', title: 'Wishlist' },
-  { id: 'Applied', title: 'Applied' },
-  { id: 'OA', title: 'OA / Test' },
-  { id: 'Screening', title: 'Screening' },
-  { id: 'Technical', title: 'Technical' },
-  { id: 'HR', title: 'HR' },
-  { id: 'Offer', title: 'Offer' },
-  { id: 'Rejected', title: 'Rejected' },
-];
+import { PIPELINE_STATUSES } from '../../utils/constants.js';
+
+const COLUMNS = PIPELINE_STATUSES.map(status => ({ id: status, title: status }));
+
+const dropAnimationConfig = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: {
+      active: {
+        opacity: '0.4',
+      },
+    },
+  }),
+};
 
 export default function KanbanBoard({ initialJobs, onJobClick }) {
   const [jobs, setJobs] = useState(initialJobs || []);
@@ -39,7 +43,7 @@ export default function KanbanBoard({ initialJobs, onJobClick }) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 10,
       },
     }),
     useSensor(KeyboardSensor, {
@@ -127,19 +131,21 @@ export default function KanbanBoard({ initialJobs, onJobClick }) {
 
   const [activeTab, setActiveTab] = useState(COLUMNS[0].id);
 
-  const columnsWithJobs = COLUMNS.map(col => ({
-    ...col,
-    jobs: jobs.filter(j => j.status === col.id)
-  }));
+  const columnsWithJobs = useMemo(() => {
+    return COLUMNS.map(col => ({
+      ...col,
+      jobs: jobs.filter(j => j.status === col.id)
+    }));
+  }, [jobs]);
 
-  const handleStatusChange = async (jobId, newStatus) => {
+  const handleStatusChange = useCallback(async (jobId, newStatus) => {
     try {
       await updateJob(jobId, { status: newStatus });
       setJobs(prev => prev.map(j => j._id === jobId ? { ...j, status: newStatus } : j));
     } catch (error) {
       console.error('Failed to update job status', error);
     }
-  };
+  }, []);
 
   return (
     <div className="flex flex-col h-[calc(100vh-12rem)] w-full gap-4">
@@ -193,8 +199,8 @@ export default function KanbanBoard({ initialJobs, onJobClick }) {
             ))}
           </div>
           
-          <DragOverlay>
-            {activeJob ? <KanbanCard job={activeJob} /> : null}
+          <DragOverlay dropAnimation={dropAnimationConfig}>
+            {activeJob ? <KanbanCard job={activeJob} isOverlay={true} /> : null}
           </DragOverlay>
         </DndContext>
       </div>

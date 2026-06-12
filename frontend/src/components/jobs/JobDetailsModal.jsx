@@ -11,12 +11,9 @@ import Button from '../ui/Button.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 
 const STAGES = [
-  { id: 'Wishlist', label: 'Wishlist', activeClass: 'bg-blue-500 text-white border-blue-500' },
   { id: 'Applied', label: 'Applied', activeClass: 'bg-indigo-500 text-white border-indigo-500' },
-  { id: 'OA', label: 'OA / Test', activeClass: 'bg-purple-500 text-white border-purple-500' },
-  { id: 'Screening', label: 'Screening', activeClass: 'bg-amber-500 text-white border-amber-500' },
-  { id: 'Technical', label: 'Technical', activeClass: 'bg-orange-500 text-white border-orange-500' },
-  { id: 'HR', label: 'HR / Behav.', activeClass: 'bg-teal-500 text-white border-teal-500' },
+  { id: 'Assessment', label: 'Assessment', activeClass: 'bg-purple-500 text-white border-purple-500' },
+  { id: 'Interview', label: 'Interview', activeClass: 'bg-orange-500 text-white border-orange-500' },
   { id: 'Offer', label: 'Offer', activeClass: 'bg-emerald-500 text-white border-emerald-500' },
   { id: 'Rejected', label: 'Rejected', activeClass: 'bg-rose-500 text-white border-rose-500' },
 ];

@@ -1,15 +1,10 @@
 import Button from '../ui/Button.jsx';
 
+import { PIPELINE_STATUSES } from '../../utils/constants.js';
+
 const statusOptions = [
   { value: 'all', label: 'All Statuses' },
-  { value: 'Wishlist', label: 'Wishlist' },
-  { value: 'Applied', label: 'Applied' },
-  { value: 'OA', label: 'OA / Test' },
-  { value: 'Screening', label: 'Screening' },
-  { value: 'Technical', label: 'Technical' },
-  { value: 'HR', label: 'HR' },
-  { value: 'Offer', label: 'Offer' },
-  { value: 'Rejected', label: 'Rejected' },
+  ...PIPELINE_STATUSES.map(s => ({ value: s, label: s }))
 ];
 
 const priorityOptions = [

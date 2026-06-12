@@ -1,13 +1,14 @@
 // Mongoose model representing a single job application.
 import mongoose from "mongoose";
+import { PIPELINE_STATUSES } from "../config/constants.js";
 
 // Embedded document used to track a history of status changes over time.
 const historySchema = new mongoose.Schema(
   {
     status: {
       type: String,
-      required: true,
-      enum: ["Wishlist", "Applied", "OA", "Screening", "Technical", "HR", "Offer", "Rejected"]
+      required: true
+      // Enum removed to safely preserve legacy status records (Wishlist, OA, etc.)
     },
     at: {
       type: Date,
@@ -43,8 +44,13 @@ const jobSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["Wishlist", "Applied", "OA", "Screening", "Technical", "HR", "Offer", "Rejected"],
+      enum: PIPELINE_STATUSES,
       default: "Applied"
+    },
+    subStage: {
+      type: String,
+      trim: true,
+      default: null
     },
     appliedDate: {
       type: Date

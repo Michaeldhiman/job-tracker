@@ -8,9 +8,11 @@ import {
   PieChart, Pie, Cell, AreaChart, Area, Legend
 } from 'recharts';
 
+import { PIPELINE_STATUSES } from '../utils/constants.js';
+
 const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6', '#06b6d4', '#84cc16', '#ec4899'];
 
-const STATUS_ORDER = ['Wishlist', 'Applied', 'OA', 'Screening', 'Technical', 'HR', 'Offer', 'Rejected'];
+const STATUS_ORDER = PIPELINE_STATUSES;
 
 function KPICard({ label, value, suffix = '', icon: Icon, color = 'text-primary' }) {
   return (
@@ -97,11 +99,11 @@ function AnalyticsPage() {
   const total = data.funnel.reduce((s, f) => s + f.count, 0);
   const offers = data.funnel.find(f => f._id === 'Offer')?.count || 0;
   const rejected = data.funnel.find(f => f._id === 'Rejected')?.count || 0;
-  const interviewStages = ['Screening', 'Technical', 'HR'];
+  const interviewStages = ['Interview'];
   const interviewCount = data.funnel.filter(f => interviewStages.includes(f._id)).reduce((s, f) => s + f.count, 0);
   const applied = data.funnel.find(f => f._id === 'Applied')?.count || 0;
 
-  const responseRate = total > 0 ? Math.round(((total - applied - (data.funnel.find(f => f._id === 'Wishlist')?.count || 0)) / total) * 100) : 0;
+  const responseRate = total > 0 ? Math.round(((total - applied) / total) * 100) : 0;
   const interviewRate = total > 0 ? Math.round((interviewCount / total) * 100) : 0;
   const offerRate = total > 0 ? Math.round((offers / total) * 100) : 0;
   const rejectionRate = total > 0 ? Math.round((rejected / total) * 100) : 0;
@@ -125,9 +127,9 @@ function AnalyticsPage() {
 
   // Conversion funnel (sequential)
   const conversionStages = [
-    { name: 'Applied', count: (data.funnel.find(f => f._id === 'Applied')?.count || 0) + interviewCount + offers },
-    { name: 'Screening', count: (data.funnel.find(f => f._id === 'Screening')?.count || 0) + (data.funnel.find(f => f._id === 'Technical')?.count || 0) + (data.funnel.find(f => f._id === 'HR')?.count || 0) + offers },
-    { name: 'Interview', count: (data.funnel.find(f => f._id === 'Technical')?.count || 0) + (data.funnel.find(f => f._id === 'HR')?.count || 0) + offers },
+    { name: 'Applied', count: total },
+    { name: 'Assessment', count: (data.funnel.find(f => f._id === 'Assessment')?.count || 0) + interviewCount + offers },
+    { name: 'Interview', count: interviewCount + offers },
     { name: 'Offer', count: offers },
   ].filter(s => s.count > 0);
 

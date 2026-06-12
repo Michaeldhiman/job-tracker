@@ -34,7 +34,7 @@ function LoginPage() {
   }, [isAuthenticated, navigate]);
 
 
-  // Product showcase stage loop (Wishlist -> Applied -> Interview -> Offer)
+  // Product showcase stage loop (Applied -> Assessment -> Interview -> Offer)
   const [activeStage, setActiveStage] = useState(0);
   useEffect(() => {
     const timer = setInterval(() => {
@@ -135,10 +135,10 @@ function LoginPage() {
             {/* Kanban Columns */}
             <div className="grid grid-cols-4 gap-3">
               {[
-                { name: 'Wishlist', bg: 'border-zinc-500/10' },
-                { name: 'Applied', bg: 'border-blue-500/10' },
-                { name: 'Technical', bg: 'border-amber-500/10' },
-                { name: 'Offers', bg: 'border-emerald-500/15' }
+                { name: 'Applied', bg: 'border-zinc-500/10' },
+                { name: 'Assessment', bg: 'border-indigo-500/10' },
+                { name: 'Interview', bg: 'border-amber-500/10' },
+                { name: 'Offer', bg: 'border-emerald-500/10' }
               ].map((col, idx) => (
                 <div key={idx} className="flex flex-col gap-3 min-h-[140px] relative">
                   <div className="text-[10px] xl:text-xs font-bold text-zinc-500 uppercase tracking-widest text-center truncate">
@@ -160,9 +160,9 @@ function LoginPage() {
                         <h4 className="text-[10px] font-bold text-zinc-300 truncate leading-snug">Senior Frontend</h4>
                         
                         {/* Dynamic Status Badges */}
-                        {activeStage === 0 && <span className="text-[8px] font-bold text-zinc-400 bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 self-start">Wishlist</span>}
-                        {activeStage === 1 && <span className="text-[8px] font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20 self-start">Applied</span>}
-                        {activeStage === 2 && <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 self-start">Technical</span>}
+                        {activeStage === 0 && <span className="text-[8px] font-bold text-zinc-400 bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700 self-start">Applied</span>}
+                        {activeStage === 1 && <span className="text-[8px] font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20 self-start">Assessment</span>}
+                        {activeStage === 2 && <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 self-start">Interview</span>}
                         {activeStage === 3 && (
                           <motion.span 
                             initial={{ scale: 0.9 }}
@@ -217,10 +217,10 @@ function LoginPage() {
           {/* Success Journey timeline nodes */}
           <div className="flex items-center justify-between max-w-xl mx-auto w-full px-6 py-2">
             {[
-              { label: 'Wishlist', active: activeStage >= 0 },
-              { label: 'Applied', active: activeStage >= 1 },
-              { label: 'Technical', active: activeStage >= 2 },
-              { label: 'Offer Received', active: activeStage >= 3 }
+              { label: 'Applied', active: activeStage >= 0 },
+              { label: 'Assessment', active: activeStage >= 1 },
+              { label: 'Interview', active: activeStage >= 2 },
+              { label: 'Offer', active: activeStage >= 3 }
             ].map((node, i) => (
               <div key={i} className="flex items-center gap-2 group">
                 <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border transition-all duration-300 ${node.active ? 'border-primary bg-primary shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'border-zinc-800 bg-zinc-950'}`}>

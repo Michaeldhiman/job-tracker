@@ -61,7 +61,7 @@ const randomizeTime = (date) => {
 
 // ─── Reference Data ──────────────────────────────────────────────────────────
 
-const STATUSES = ["Wishlist", "Applied", "OA", "Screening", "Technical", "HR", "Offer", "Rejected"];
+// Status definitions removed, using PIPELINE_STATUSES from model validation
 const SOURCES = ["LinkedIn", "Naukri", "Referral", "Career Page", "Indeed", "Internshala", "Other"];
 const PRIORITIES = ["Low", "Medium", "High"];
 
@@ -269,25 +269,14 @@ function generateJourney(appliedDate, now) {
   const journeyTemplates = [
     // Active pipeline (still in progress)
     { path: ["Applied"],                                weight: 8 },
-    { path: ["Applied", "OA"],                          weight: 6 },
-    { path: ["Applied", "Screening"],                   weight: 4 },
-    { path: ["Applied", "OA", "Technical"],             weight: 4 },
-    { path: ["Applied", "Screening", "Technical"],      weight: 3 },
-    { path: ["Applied", "Screening", "Technical", "HR"], weight: 2 },
+    { path: ["Applied", "Assessment"],                  weight: 10 },
+    { path: ["Applied", "Assessment", "Interview"],     weight: 9 },
 
     // Completed journeys
     { path: ["Applied", "Rejected"],                                       weight: 15 },
-    { path: ["Applied", "OA", "Rejected"],                                 weight: 10 },
-    { path: ["Applied", "Screening", "Rejected"],                          weight: 6 },
-    { path: ["Applied", "OA", "Technical", "Rejected"],                    weight: 5 },
-    { path: ["Applied", "Screening", "Technical", "Rejected"],             weight: 4 },
-    { path: ["Applied", "Screening", "Technical", "HR", "Rejected"],       weight: 3 },
-    { path: ["Applied", "OA", "Technical", "HR", "Offer"],                 weight: 3 },
-    { path: ["Applied", "Screening", "Technical", "HR", "Offer"],          weight: 3 },
-    { path: ["Applied", "Screening", "Technical", "Offer"],                weight: 2 },
-
-    // Wishlist items (not yet applied)
-    { path: ["Wishlist"],                                                  weight: 5 },
+    { path: ["Applied", "Assessment", "Rejected"],                         weight: 16 },
+    { path: ["Applied", "Assessment", "Interview", "Rejected"],            weight: 12 },
+    { path: ["Applied", "Assessment", "Interview", "Offer"],               weight: 8 },
   ];
 
   // Weighted random selection
@@ -318,7 +307,7 @@ function generateJourney(appliedDate, now) {
     }
 
     // Set interview date for Technical/HR/Screening stages
-    if (["Technical", "HR", "Screening"].includes(path[i]) && !interviewDate) {
+    if (["Assessment", "Interview"].includes(path[i]) && !interviewDate) {
       interviewDate = addDays(currentDate, randInt(0, 3));
     }
   }
@@ -326,7 +315,7 @@ function generateJourney(appliedDate, now) {
   const finalStatus = path[path.length - 1];
 
   // Set follow-up date for in-progress applications
-  if (!["Rejected", "Offer", "Wishlist"].includes(finalStatus)) {
+  if (!["Rejected", "Offer"].includes(finalStatus)) {
     const daysFromNow = randInt(-5, 14);
     followUpDate = addDays(now, daysFromNow);
   }
@@ -592,7 +581,7 @@ async function seed() {
         location: location || "Remote",
         meetingLink: "https://meet.google.com/abc-defg-hij",
         company: companyDef.name,
-        interviewRound: pick(["Screening", "Technical", "HR"]),
+        interviewRound: pick(["Assessment", "Interview", "Interview"]),
         syncStatus: "pending",
         // Past interviews: mark reminders as already sent so they don't retrigger.
         // Future interviews: leave as false so the scheduler can fire them.
@@ -613,9 +602,7 @@ async function seed() {
       logs.push({ userId, jobId: job._id, action: "Resume Attached", details: `Attached "${resume.name}"`, createdAt: addHours(appliedDate, randInt(1, 4)) });
     }
 
-    if (jobData.status !== "Wishlist") {
-      logs.push({ userId, jobId: job._id, action: "Job Updated", details: `Submitted via ${jobData.source}`, createdAt: addHours(appliedDate, randInt(2, 8)) });
-    }
+    logs.push({ userId, jobId: job._id, action: "Job Updated", details: `Submitted via ${jobData.source}`, createdAt: addHours(appliedDate, randInt(2, 8)) });
 
     // Log each status transition
     for (let i = 1; i < (overrides.history || history).length; i++) {
@@ -691,7 +678,7 @@ async function seed() {
       status: "Rejected",
       history: [
         { status: "Applied", at: googleReapply1 },
-        { status: "OA", at: addDays(googleReapply1, 14) },
+        { status: "Assessment", at: addDays(googleReapply1, 14) },
         { status: "Rejected", at: addDays(googleReapply1, 28) }
       ]
     }
@@ -701,11 +688,11 @@ async function seed() {
     "Full Stack Engineer",
     addDays(now, -60),
     {
-      status: "Technical",
+      status: "Interview",
       history: [
         { status: "Applied", at: addDays(now, -60) },
-        { status: "OA", at: addDays(now, -45) },
-        { status: "Technical", at: addDays(now, -30) }
+        { status: "Assessment", at: addDays(now, -45) },
+        { status: "Interview", at: addDays(now, -30) }
       ],
       interviewDate: addDays(now, 5),
       followUpDate: addDays(now, 3),
@@ -723,8 +710,8 @@ async function seed() {
       status: "Rejected",
       history: [
         { status: "Applied", at: amzReapply1 },
-        { status: "OA", at: addDays(amzReapply1, 7) },
-        { status: "Technical", at: addDays(amzReapply1, 21) },
+        { status: "Assessment", at: addDays(amzReapply1, 7) },
+        { status: "Interview", at: addDays(amzReapply1, 21) },
         { status: "Rejected", at: addDays(amzReapply1, 35) }
       ]
     }
@@ -734,12 +721,12 @@ async function seed() {
     "SDE-2",
     addDays(now, -30),
     {
-      status: "HR",
+      status: "Interview",
       history: [
         { status: "Applied", at: addDays(now, -30) },
-        { status: "OA", at: addDays(now, -20) },
-        { status: "Technical", at: addDays(now, -12) },
-        { status: "HR", at: addDays(now, -5) }
+        { status: "Assessment", at: addDays(now, -20) },
+        { status: "Interview", at: addDays(now, -12) },
+        { status: "Interview", at: addDays(now, -5) }
       ],
       interviewDate: addDays(now, 2),
       followUpDate: addDays(now, 7),
@@ -760,14 +747,14 @@ async function seed() {
     const intDate = addDays(now, i + 1); // Stagger across next 8 days
 
     await createJobRecord(companyDef, role, appliedDate, {
-      status: i < 4 ? "Technical" : "HR",
+      status: i < 4 ? "Interview" : "Interview",
       interviewDate: intDate,
       followUpDate: addDays(now, i + 3),
       priority: i < 3 ? "High" : "Medium",
       history: [
         { status: "Applied", at: appliedDate },
-        { status: "Screening", at: addDays(appliedDate, 7) },
-        { status: i < 4 ? "Technical" : "HR", at: addDays(appliedDate, 14) }
+        { status: "Assessment", at: addDays(appliedDate, 7) },
+        { status: i < 4 ? "Interview" : "Interview", at: addDays(appliedDate, 14) }
       ]
     });
     jobCount++;
@@ -801,8 +788,8 @@ async function seed() {
 
   // Job created today
   await createJobRecord(pick(COMPANY_DEFS), "Software Engineer", now, {
-    status: "Wishlist",
-    history: [{ status: "Wishlist", at: now }]
+    status: "Applied",
+    history: [{ status: "Applied", at: now }]
   });
   jobCount++;
 
@@ -876,7 +863,7 @@ async function seed() {
       startHour: 10,
       durationHours: 1,
       company: "Practice",
-      interviewRound: "Technical",
+      interviewRound: "Interview",
       location: "Zoom",
       meetingLink: "https://zoom.us/j/1234567890",
     },
@@ -887,7 +874,7 @@ async function seed() {
       startHour: 15,
       durationHours: 1,
       company: "Mentorship",
-      interviewRound: "HR",
+      interviewRound: "Interview",
       location: "Google Meet",
       meetingLink: "https://meet.google.com/xyz-abcd-efg",
     },
@@ -898,7 +885,7 @@ async function seed() {
       startHour: 11,
       durationHours: 2,
       company: "Atlassian",
-      interviewRound: "HR",
+      interviewRound: "Interview",
       location: "Atlassian Bangalore Office",
       meetingLink: "https://meet.google.com/atl-final-loop",
     },
@@ -909,7 +896,7 @@ async function seed() {
       startHour: 14,
       durationHours: 1,
       company: "Snowflake",
-      interviewRound: "Technical",
+      interviewRound: "Interview",
       location: "Remote",
       meetingLink: "https://zoom.us/j/9876543210",
     },
@@ -920,7 +907,7 @@ async function seed() {
       startHour: 16,
       durationHours: 1,
       company: "GitHub",
-      interviewRound: "Screening",
+      interviewRound: "Assessment",
       location: "Remote",
       meetingLink: "https://meet.google.com/ghb-portf-rev",
     },
@@ -931,7 +918,7 @@ async function seed() {
       startHour: 10,
       durationHours: 2,
       company: "Databricks",
-      interviewRound: "Technical",
+      interviewRound: "Interview",
       location: "Remote",
       meetingLink: "https://zoom.us/j/1122334455",
     },
@@ -944,7 +931,7 @@ async function seed() {
       startHour: 11,
       durationHours: 1,
       company: "Notion",
-      interviewRound: "Screening",
+      interviewRound: "Assessment",
       location: "Remote",
       meetingLink: "https://meet.google.com/not-scr-call",
     },
@@ -955,7 +942,7 @@ async function seed() {
       startHour: 14,
       durationHours: 2,
       company: "Vercel",
-      interviewRound: "Technical",
+      interviewRound: "Interview",
       location: "Remote",
       meetingLink: "https://meet.google.com/vrc-fe-round",
     },
@@ -966,7 +953,7 @@ async function seed() {
       startHour: 10,
       durationHours: 1,
       company: "Postman",
-      interviewRound: "Technical",
+      interviewRound: "Interview",
       location: "Hybrid - Bangalore",
       meetingLink: undefined,
     },

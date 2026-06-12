@@ -1,37 +1,23 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MoreHorizontal, Calendar, Building2 } from 'lucide-react';
 import clsx from 'clsx';
 
-const STATUSES = ['Wishlist', 'Applied', 'OA', 'Screening', 'Technical', 'HR', 'Offer', 'Rejected'];
+import { PIPELINE_STATUSES } from '../../utils/constants.js';
 
-export default function KanbanCard({ job, onClick, onStatusChange }) {
-  const {
-    setNodeRef,
-    attributes,
-    listeners,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: job._id,
-    data: {
-      type: 'Task',
-      job,
-    },
-  });
+const STATUSES = PIPELINE_STATUSES;
 
-  const style = {
-    transition,
-    transform: CSS.Transform.toString(transform),
-  };
-
+const KanbanCardContent = memo(({ job, isDragging, isOverlay, onJobClick, onStatusChange, listeners, attributes, setNodeRef, style }) => {
   const handleStatusSelect = (e) => {
     e.stopPropagation();
     if (onStatusChange) {
       onStatusChange(job._id, e.target.value);
     }
+  };
+
+  const handleClick = () => {
+    if (onJobClick) onJobClick(job);
   };
 
   return (
@@ -40,10 +26,12 @@ export default function KanbanCard({ job, onClick, onStatusChange }) {
       style={style}
       {...attributes}
       {...listeners}
-      onClick={onClick}
+      onClick={handleClick}
       className={clsx(
-        "bg-surface border border-border p-3 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors group relative",
-        isDragging && "opacity-50 border-primary"
+        "bg-surface border border-border p-3 rounded-lg shadow-sm cursor-grab active:cursor-grabbing transition-all duration-250 ease-out group relative",
+        !isDragging && !isOverlay && "hover:-translate-y-0.5 hover:shadow-md hover:border-primary/50",
+        isDragging && "opacity-30 border-primary",
+        isOverlay && "scale-105 rotate-2 shadow-2xl border-primary bg-surface cursor-grabbing z-50"
       )}
     >
       <div className="flex justify-between items-start mb-2">
@@ -88,4 +76,54 @@ export default function KanbanCard({ job, onClick, onStatusChange }) {
       </div>
     </div>
   );
-}
+});
+
+KanbanCardContent.displayName = 'KanbanCardContent';
+
+const KanbanCard = memo(({ job, onJobClick, onStatusChange, isOverlay }) => {
+  const {
+    setNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: job._id,
+    data: {
+      type: 'Task',
+      job,
+    },
+  });
+
+  const style = {
+    transition: transition || 'transform 250ms ease',
+    transform: CSS.Transform.toString(transform),
+  };
+
+  if (isOverlay) {
+    return (
+      <KanbanCardContent 
+        job={job} 
+        isOverlay={true} 
+      />
+    );
+  }
+
+  return (
+    <KanbanCardContent
+      job={job}
+      onJobClick={onJobClick}
+      onStatusChange={onStatusChange}
+      isDragging={isDragging}
+      listeners={listeners}
+      attributes={attributes}
+      setNodeRef={setNodeRef}
+      style={style}
+    />
+  );
+});
+
+KanbanCard.displayName = 'KanbanCard';
+
+export default KanbanCard;

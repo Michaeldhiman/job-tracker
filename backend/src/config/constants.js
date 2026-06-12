@@ -35,3 +35,5 @@ export const GOOGLE_CALENDAR_DEFAULTS = {
   REMINDER_EMAIL_MINUTES: 24 * 60, // 24 hours
   REMINDER_POPUP_MINUTES: [60, 15], // 1 hour, 15 minutes
 };
+
+export const PIPELINE_STATUSES = ["Applied", "Assessment", "Interview", "Offer", "Rejected"];

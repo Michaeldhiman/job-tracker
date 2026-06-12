@@ -7,3 +7,5 @@ export const NOTIFICATION_SETTINGS = {
 export const UPLOAD_LIMITS = {
   MAX_FILE_SIZE_BYTES: 5 * 1024 * 1024, // 5MB
 };
+
+export const PIPELINE_STATUSES = ["Applied", "Assessment", "Interview", "Offer", "Rejected"];

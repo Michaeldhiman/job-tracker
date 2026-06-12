@@ -797,7 +797,7 @@ export default function LandingPage() {
               
               {/* Column structure behind cards mapping to Kanban columns */}
               <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-3 gap-6 opacity-30 pointer-events-none">
-                <div className="border border-dashed border-white/10 rounded-2xl flex items-center justify-center"><span className="text-xs text-zinc-700">COL 1: WISHLIST</span></div>
+                <div className="border border-dashed border-white/10 rounded-2xl flex items-center justify-center"><span className="text-xs text-zinc-700">COL 1: Applied</span></div>
                 <div className="border border-dashed border-white/10 rounded-2xl flex items-center justify-center"><span className="text-xs text-zinc-700">COL 2: APPLIED</span></div>
                 <div className="border border-dashed border-white/10 rounded-2xl flex items-center justify-center"><span className="text-xs text-zinc-700">COL 3: INTERVIEWING</span></div>
               </div>
@@ -1170,7 +1170,7 @@ export default function LandingPage() {
                       <span className="truncate">Stripe</span><span>Technical</span><span className="truncate">resume_old.pdf</span><span className="text-amber-500 font-bold">Forgot (3d ago)</span>
                     </div>
                     <div className="grid grid-cols-4 py-1.5 text-zinc-650">
-                      <span className="truncate">Meta</span><span>Wishlist</span><span className="truncate">cv_latest.pdf</span><span>No reminders</span>
+                      <span className="truncate">Meta</span><span>Applied</span><span className="truncate">cv_latest.pdf</span><span>No reminders</span>
                     </div>
                   </div>
                 </div>
@@ -1437,7 +1437,7 @@ export default function LandingPage() {
                   { q: "Can I upload my resumes here?", a: "Absolutely. The Resume Vault lets you upload PDF documents and map specific versions to specific company applications so you always know which CV you applied with." },
                   { q: "How secure is my data?", a: "Your data is encrypted both in transit and at rest. We never sell your application data or personal information to third parties, and your data remains entirely yours." },
                   { q: "Does it sync with my calendar?", a: "Yes! Currently, we support internal schedules and alarms. Native Google Calendar integrations can be toggled via your Settings/Preferences dashboard." },
-                  { q: "Can I track custom application stages?", a: "Yes. While we provide standard stages (Wishlist, Applied, OA, Screening, Technical, HR, Offer, Rejected), you can filter and organize your board dynamically by status, priority, and source." }
+                  { q: "Can I track custom application stages?", a: "Yes. While we provide standard stages (Applied, Applied, OA, Offer, Rejected), you can filter and organize your board dynamically by status, priority, and source." }
                 ].map((faq, i) => {
                   const isActive = activeFaq === i;
                   return (

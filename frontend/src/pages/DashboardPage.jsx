@@ -343,7 +343,8 @@ const getStatusColor = (status) => {
   switch (status) {
     case 'Offer': return 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20';
     case 'Rejected': return 'text-rose-400 bg-rose-500/10 border border-rose-500/20';
-    case 'Wishlist': return 'text-purple-400 bg-purple-500/10 border border-purple-500/20';
+    case 'Assessment': return 'text-purple-400 bg-purple-500/10 border border-purple-500/20';
+    case 'Interview': return 'text-orange-400 bg-orange-500/10 border border-orange-500/20';
     default: return 'text-primary bg-primary/10 border border-primary/20';
   }
 };
