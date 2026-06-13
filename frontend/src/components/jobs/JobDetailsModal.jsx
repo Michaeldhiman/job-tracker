@@ -9,6 +9,7 @@ import { updateJob, deleteJob } from '../../api/jobsApi.js';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
+import InterviewHistory from './InterviewHistory.jsx';
 
 const STAGES = [
   { id: 'Applied', label: 'Applied', activeClass: 'bg-indigo-500 text-white border-indigo-500' },
@@ -18,7 +19,7 @@ const STAGES = [
   { id: 'Rejected', label: 'Rejected', activeClass: 'bg-rose-500 text-white border-rose-500' },
 ];
 
-export default function JobDetailsModal({ isOpen, job, onClose, onSuccess, onEdit }) {
+export default function JobDetailsModal({ isOpen, job, onClose, onSuccess, onEdit, onJobUpdated }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState(null);
@@ -285,6 +286,22 @@ export default function JobDetailsModal({ isOpen, job, onClose, onSuccess, onEdi
                           </div>
                         )}
                       </div>
+
+                      <InterviewHistory 
+                        job={job} 
+                        onUpdate={async (updates) => {
+                          try {
+                            await updateJob(job._id, updates);
+                            toastSuccess("Interview history updated");
+                            if (onJobUpdated) {
+                              onJobUpdated(updates);
+                            }
+                          } catch (err) {
+                            toastError("Failed to update interview history");
+                            throw err;
+                          }
+                        }} 
+                      />
 
                       {/* Tags */}
                       {job.tags && job.tags.length > 0 && (

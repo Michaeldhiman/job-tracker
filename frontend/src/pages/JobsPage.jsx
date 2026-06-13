@@ -151,6 +151,10 @@ function JobsPage() {
           setSelectedJob(null);
           fetchJobs();
         }}
+        onJobUpdated={(updates) => {
+          setSelectedJob(prev => prev ? { ...prev, ...updates } : null);
+          fetchJobs();
+        }}
       />
     </div>
   );

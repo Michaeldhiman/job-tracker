@@ -20,6 +20,29 @@ const historySchema = new mongoose.Schema(
   { _id: false }
 );
 
+// Embedded document used to track interview rounds
+const interviewRoundSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    date: {
+      type: Date,
+      required: true
+    },
+    notes: {
+      type: String,
+      trim: true
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    }
+  }
+);
+
 const jobSchema = new mongoose.Schema(
   {
     // Owner of the job record (user that created the application).
@@ -117,6 +140,10 @@ const jobSchema = new mongoose.Schema(
     // List of status changes (e.g. Applied → Technical → Offer).
     history: {
       type: [historySchema],
+      default: []
+    },
+    interviews: {
+      type: [interviewRoundSchema],
       default: []
     },
     interviewReminderSent: {

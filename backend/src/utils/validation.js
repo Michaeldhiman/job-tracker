@@ -19,7 +19,16 @@ export const jobSchemaZod = z.object({
   notes: z.string().optional(),
   resumeId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid resume ID").optional().or(z.literal("")).nullable(),
   resumeName: z.string().optional().or(z.literal("")).nullable(),
-  resumeUrl: z.string().url("Invalid URL").optional().or(z.literal("")).nullable()
+  resumeUrl: z.string().url("Invalid URL").optional().or(z.literal("")).nullable(),
+  interviews: z.array(
+    z.object({
+      _id: z.string().optional(),
+      title: z.string(),
+      date: z.string().or(z.date()),
+      notes: z.string().optional(),
+      completed: z.boolean().optional()
+    })
+  ).optional()
 });
 
 export const validateRequest = (schema) => (req, res, next) => {
