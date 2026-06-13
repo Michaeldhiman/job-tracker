@@ -53,20 +53,6 @@ Snap Job utilizes a decoupled client-server architecture built on the MERN stack
 
 ---
 
-## 📸 Screenshots & Demonstrations
-
-*(Placeholder: Add visual assets here to demonstrate the application's core value.)*
-
-| Dashboard & Analytics | Drag-and-Drop Kanban Board |
-| :---: | :---: |
-| `[Screenshot: Recharts analytics showing monthly progress and resume conversion rates]` | `[GIF: A 5-second recording demonstrating a job card being dragged between status columns]` |
-
-| Resume Library | Google Calendar Integration |
-| :---: | :---: |
-| `[Screenshot: The resume leaderboard and upload interface]` | `[GIF: The OAuth consent screen flow resulting in an interview syncing to Google Calendar]` |
-
----
-
 ## ⚙️ Environment Variables
 
 The application requires specific environment variables to function correctly. Reference the `.env.example` files in their respective directories.
