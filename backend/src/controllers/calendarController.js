@@ -9,6 +9,7 @@ import {
   syncEvents 
 } from "../services/googleCalendarService.js";
 import { config, requireConfig } from "../config/runtimeConfig.js";
+import { check24HourReminders, check1HourReminders } from "../services/schedulerService.js";
 
 // Input validation schema for Custom Events
 export const eventSchemaZod = z.object({
@@ -18,8 +19,6 @@ export const eventSchemaZod = z.object({
   date: z.string().or(z.date()),
   startTime: z.string().regex(/^([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid start time format (HH:MM)"),
   endTime: z.string().regex(/^([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid end time format (HH:MM)"),
-  location: z.string().optional().nullable(),
-  meetingLink: z.string().url("Invalid meeting link URL").optional().or(z.literal("")).nullable(),
   company: z.string().optional().nullable(),
   interviewRound: z.string().optional().nullable(),
 });
@@ -144,6 +143,11 @@ export const createEvent = async (req, res, next) => {
     }
 
     await event.save();
+
+    // Trigger non-blocking real-time reminder checks in case the event starts within the target windows
+    check24HourReminders().catch(err => console.error("Error in real-time 24h reminder check:", err));
+    check1HourReminders().catch(err => console.error("Error in real-time 1h reminder check:", err));
+
     res.status(201).json({ success: true, event });
   } catch (error) {
     next(error);
@@ -193,6 +197,11 @@ export const updateEvent = async (req, res, next) => {
     }
 
     await event.save();
+
+    // Trigger non-blocking real-time reminder checks in case the rescheduled/updated event starts within target windows
+    check24HourReminders().catch(err => console.error("Error in real-time 24h reminder check:", err));
+    check1HourReminders().catch(err => console.error("Error in real-time 1h reminder check:", err));
+
     res.json({ success: true, event });
   } catch (error) {
     next(error);

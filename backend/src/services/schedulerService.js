@@ -56,9 +56,9 @@ export const check24HourReminders = async () => {
   const windowEnd = new Date(now.getTime() + minutes(lead + halfWindow));
 
   try {
-    // Fetch events in the candidate date range whose reminder hasn't been sent
+    // Fetch events whose 24h reminder hasn't been sent yet
     const events = await Event.find({
-      date:             { $gte: new Date(windowStart.toDateString()), $lte: new Date(windowEnd.toDateString()) },
+      date:             { $gte: new Date(now.toDateString()) },
       reminder24hSent:  { $ne: true },
     });
 
@@ -66,10 +66,14 @@ export const check24HourReminders = async () => {
       const interviewStart = getInterviewStart(event);
 
       // Precise time check: is the interview between 23h45min and 24h15min from now?
-      if (interviewStart < windowStart || interviewStart > windowEnd) continue;
+      if (interviewStart < windowStart || interviewStart > windowEnd) {
+        continue;
+      }
 
       const user = await User.findById(event.userId);
-      if (!user || !user.emailNotifs || !user.interviewReminders) continue;
+      if (!user || !user.emailNotifs || !user.interviewReminders) {
+        continue;
+      }
 
       const dateLabel = formatDate(interviewStart);
       const timeLabel = formatTime(event.startTime);
@@ -127,10 +131,14 @@ export const check1HourReminders = async () => {
       const interviewStart = getInterviewStart(event);
 
       // Precise time check
-      if (interviewStart < windowStart || interviewStart > windowEnd) continue;
+      if (interviewStart < windowStart || interviewStart > windowEnd) {
+        continue;
+      }
 
       const user = await User.findById(event.userId);
-      if (!user || !user.emailNotifs || !user.interviewReminders) continue;
+      if (!user || !user.emailNotifs || !user.interviewReminders) {
+        continue;
+      }
 
       const timeLabel = formatTime(event.startTime);
       const company   = event.company || "the company";

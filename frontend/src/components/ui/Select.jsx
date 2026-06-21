@@ -14,11 +14,14 @@ const Select = forwardRef(({
   size = 'md',
   className = '',
   disabled = false,
+  showSearch = false,
   ...props
 }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const containerRef = useRef(null);
   const hiddenSelectRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   // Sync internal refs
   const setRefs = (node) => {
@@ -39,6 +42,20 @@ const Select = forwardRef(({
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
+
+  // Sync search input focus and reset state
+  useEffect(() => {
+    if (isOpen) {
+      if (showSearch && searchInputRef.current) {
+        const timer = setTimeout(() => {
+          searchInputRef.current?.focus();
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      setSearchQuery('');
+    }
+  }, [isOpen, showSearch]);
 
   // Determine current active value
   const [internalValue, setInternalValue] = useState(value || '');
@@ -74,6 +91,12 @@ const Select = forwardRef(({
 
     setIsOpen(false);
   };
+
+  const filteredOptions = searchQuery.trim() === ''
+    ? options
+    : options.filter(opt =>
+        String(opt.label).toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
@@ -123,29 +146,66 @@ const Select = forwardRef(({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-1 w-full rounded-xl border border-border shadow-2xl overflow-hidden bg-surface/95 backdrop-blur-xl max-h-60 overflow-y-auto custom-scrollbar"
+            className="absolute z-50 mt-1 w-full rounded-xl border border-border shadow-2xl overflow-hidden bg-surface/95 backdrop-blur-xl max-h-60 flex flex-col"
           >
-            <div className="py-1">
-              {options.map((opt) => {
-                const isSelected = String(opt.value) === String(internalValue);
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => handleSelect(opt.value)}
-                    className={`w-full flex items-center justify-between ${
-                      size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm'
-                    } text-left transition-colors ${
-                      isSelected
-                        ? 'bg-primary/10 text-primary font-medium'
-                        : 'text-text hover:bg-surface-elevated/60'
-                    }`}
-                  >
-                    <span>{opt.label}</span>
-                    {isSelected && <Check className="w-4 h-4 text-primary" />}
-                  </button>
-                );
-              })}
+            {showSearch && (
+              <div className="p-2 border-b border-border bg-surface-elevated/40 sticky top-0 z-10">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search job or company..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                      e.stopPropagation();
+                    }
+                  }}
+                />
+              </div>
+            )}
+            
+            <div className="py-1 overflow-y-auto custom-scrollbar flex-1">
+              {placeholder && !searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => handleSelect('')}
+                  className={`w-full flex items-center justify-between ${
+                    size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm'
+                  } text-left transition-colors text-text-muted hover:bg-surface-elevated/60`}
+                >
+                  <span>{placeholder}</span>
+                  {internalValue === '' && <Check className="w-4 h-4 text-primary" />}
+                </button>
+              )}
+              {filteredOptions.length === 0 ? (
+                <div className="px-3 py-4 text-xs text-text-muted text-center">
+                  No matches found
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = String(opt.value) === String(internalValue);
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleSelect(opt.value)}
+                      className={`w-full flex items-center justify-between ${
+                        size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm'
+                      } text-left transition-colors ${
+                        isSelected
+                          ? 'bg-primary/10 text-primary font-medium'
+                          : 'text-text hover:bg-surface-elevated/60'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {isSelected && <Check className="w-4 h-4 text-primary" />}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </motion.div>
         )}

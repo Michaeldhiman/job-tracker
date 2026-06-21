@@ -32,14 +32,6 @@ const eventSchema = new mongoose.Schema(
       type: String,
       required: true, // e.g. "15:00"
     },
-    location: {
-      type: String,
-      trim: true,
-    },
-    meetingLink: {
-      type: String,
-      trim: true,
-    },
     company: {
       type: String,
       trim: true,

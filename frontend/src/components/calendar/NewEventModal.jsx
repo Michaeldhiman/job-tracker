@@ -1,26 +1,22 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, MapPin, Link as LinkIcon, Building2, Tag, AlignLeft, AlertCircle } from 'lucide-react';
+import { X, Calendar, Clock, Building2, AlignLeft, AlertCircle } from 'lucide-react';
 import { createCalendarEvent } from '../../api/calendarApi.js';
 import { searchJobs } from '../../api/jobsApi.js';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../ui/Card.jsx';
 import Button from '../ui/Button.jsx';
 import Select from '../ui/Select.jsx';
 
-const eventSchema = z.object({
-  title: z.string().min(1, "Event title is required"),
+const formSchema = z.object({
+  jobId: z.string().optional().nullable(),
   company: z.string().optional().nullable(),
   interviewRound: z.string().optional().nullable(),
   date: z.string().min(1, "Date is required"),
   startTime: z.string().regex(/^([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid start time format (HH:MM)"),
-  endTime: z.string().regex(/^([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid end time format (HH:MM)"),
-  location: z.string().optional().nullable(),
-  meetingLink: z.string().url("Invalid link format (must start with https://)").optional().or(z.literal("")).nullable(),
   description: z.string().optional().nullable(),
-  jobId: z.string().optional().nullable(),
 });
 
 export default function NewEventModal({ isOpen, onClose, onSuccess, initialDate = null }) {
@@ -28,12 +24,15 @@ export default function NewEventModal({ isOpen, onClose, onSuccess, initialDate 
   const [error, setError] = useState(null);
   const [jobs, setJobs] = useState([]);
 
-  const { register, handleSubmit, formState: { errors }, reset, setValue, watch } = useForm({
-    resolver: zodResolver(eventSchema),
+  const { register, handleSubmit, formState: { errors }, reset, setValue, watch, control } = useForm({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       startTime: "09:00",
-      endTime: "10:00",
+      jobId: "",
+      company: "",
+      interviewRound: "",
+      description: "",
     }
   });
 
@@ -60,11 +59,13 @@ export default function NewEventModal({ isOpen, onClose, onSuccess, initialDate 
       const selectedJob = jobs.find(j => j._id === selectedJobId);
       if (selectedJob) {
         setValue('company', selectedJob.company);
-        setValue('title', `Interview with ${selectedJob.company}`);
         if (selectedJob.status) {
           setValue('interviewRound', selectedJob.status);
         }
       }
+    } else {
+      setValue('company', '');
+      setValue('interviewRound', '');
     }
   }, [selectedJobId, jobs, setValue]);
 
@@ -72,11 +73,40 @@ export default function NewEventModal({ isOpen, onClose, onSuccess, initialDate 
     setIsSubmitting(true);
     setError(null);
     try {
-      // Clean up fields before POSTing
       const payload = { ...data };
-      if (!payload.jobId) delete payload.jobId;
-      if (!payload.meetingLink) delete payload.meetingLink;
       
+      if (!payload.jobId) {
+        delete payload.jobId;
+      } else {
+        const selectedJob = jobs.find(j => j._id === payload.jobId);
+        if (selectedJob) {
+          payload.company = selectedJob.company;
+          payload.interviewRound = selectedJob.status || "Interview";
+        }
+      }
+
+      // Auto-generate Title: "[Round] Interview with [Company]" or similar
+      const companyVal = payload.company || "";
+      const roundVal = payload.interviewRound || "";
+      let generatedTitle = "";
+      if (companyVal && roundVal) {
+        generatedTitle = `${roundVal} Interview with ${companyVal}`;
+      } else if (companyVal) {
+        generatedTitle = `Interview with ${companyVal}`;
+      } else if (roundVal) {
+        generatedTitle = `${roundVal} Interview`;
+      } else {
+        generatedTitle = "Interview Event";
+      }
+      payload.title = generatedTitle;
+
+      // Calculate endTime defaulting to 1 hour (60 minutes) after startTime
+      const [sh, sm] = payload.startTime.split(':').map(Number);
+      const totalMinutes = sh * 60 + sm + 60;
+      const eh = Math.floor(totalMinutes / 60) % 24;
+      const em = totalMinutes % 60;
+      payload.endTime = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+
       await createCalendarEvent(payload);
       onSuccess();
     } catch (err) {
@@ -125,72 +155,71 @@ export default function NewEventModal({ isOpen, onClose, onSuccess, initialDate 
                     
                     {/* Link to Job Application */}
                     <div className="space-y-1.5">
-                      <Select 
-                        label="Link to Application (Optional)"
-                        {...register("jobId")}
-                        options={jobs.map(j => ({
-                          value: j._id,
-                          label: `${j.role} at ${j.company} (${j.status})`
-                        }))}
-                        placeholder="-- Select an active job application --"
+                      <Controller
+                        name="jobId"
+                        control={control}
+                        render={({ field }) => (
+                          <Select 
+                            label="Link to Application (Optional)"
+                            value={field.value}
+                            onChange={(e) => field.onChange(e.target.value)}
+                            options={jobs.map(j => ({
+                              value: j._id,
+                              label: `${j.role} at ${j.company} (${j.status})`
+                            }))}
+                            placeholder="-- Select an active job application --"
+                            showSearch={true}
+                          />
+                        )}
                       />
                     </div>
 
-                    {/* Event Title */}
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-text">Event Title <span className="text-rose-500">*</span></label>
-                      <input 
-                        type="text"
-                        {...register("title")}
-                        placeholder="e.g. Technical Interview"
-                        className={`w-full bg-background border ${errors.title ? 'border-rose-500' : 'border-border'} rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all`}
-                      />
-                      {errors.title && <p className="text-xs text-rose-500">{errors.title.message}</p>}
-                    </div>
+                    {/* Company and Round (Only shown if no application is linked) */}
+                    {!selectedJobId && (
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Company Name */}
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-medium text-text">Company Name</label>
+                          <div className="relative">
+                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+                            <input 
+                              type="text"
+                              {...register("company")}
+                              placeholder="e.g. Stripe"
+                              className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+                            />
+                          </div>
+                        </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Company Name */}
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-text">Company Name</label>
-                        <div className="relative">
-                          <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+                        {/* Interview Round */}
+                        <div className="space-y-1.5">
+                          <label className="text-sm font-medium text-text">Round / Category</label>
                           <input 
                             type="text"
-                            {...register("company")}
-                            placeholder="e.g. Stripe"
-                            className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
+                            {...register("interviewRound")}
+                            placeholder="e.g. Technical Interview"
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
                           />
                         </div>
                       </div>
-
-                      {/* Interview Round */}
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-text">Round / Category</label>
-                        <input 
-                          type="text"
-                          {...register("interviewRound")}
-                          placeholder="e.g. Technical Interview"
-                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Date Picker */}
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-text">Date <span className="text-rose-500">*</span></label>
-                      <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                        <input 
-                          type="date"
-                          {...register("date")}
-                          onClick={(e) => { try { e.target.showPicker(); } catch (err) {} }}
-                          className={`w-full bg-background border ${errors.date ? 'border-rose-500' : 'border-border'} rounded-lg pl-9 pr-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer`}
-                        />
-                      </div>
-                      {errors.date && <p className="text-xs text-rose-500">{errors.date.message}</p>}
-                    </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
+                      {/* Date Picker */}
+                      <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-text">Date <span className="text-rose-500">*</span></label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+                          <input 
+                            type="date"
+                            {...register("date")}
+                            onClick={(e) => { try { e.target.showPicker(); } catch (err) {} }}
+                            className={`w-full bg-background border ${errors.date ? 'border-rose-500' : 'border-border'} rounded-lg pl-9 pr-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer`}
+                          />
+                        </div>
+                        {errors.date && <p className="text-xs text-rose-500">{errors.date.message}</p>}
+                      </div>
+
                       {/* Start Time */}
                       <div className="space-y-1.5">
                         <label className="text-sm font-medium text-text">Start Time <span className="text-rose-500">*</span></label>
@@ -205,50 +234,6 @@ export default function NewEventModal({ isOpen, onClose, onSuccess, initialDate 
                         </div>
                         {errors.startTime && <p className="text-xs text-rose-500">{errors.startTime.message}</p>}
                       </div>
-
-                      {/* End Time */}
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-text">End Time <span className="text-rose-500">*</span></label>
-                        <div className="relative">
-                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                          <input 
-                            type="time"
-                            {...register("endTime")}
-                            onClick={(e) => { try { e.target.showPicker(); } catch (err) {} }}
-                            className={`w-full bg-background border ${errors.endTime ? 'border-rose-500' : 'border-border'} rounded-lg pl-9 pr-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer`}
-                          />
-                        </div>
-                        {errors.endTime && <p className="text-xs text-rose-500">{errors.endTime.message}</p>}
-                      </div>
-                    </div>
-
-                    {/* Location */}
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-text">Location</label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                        <input 
-                          type="text"
-                          {...register("location")}
-                          placeholder="e.g. Zoom Link, Seattle Office"
-                          className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Meeting Link */}
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-text">Video Meeting Link (URL)</label>
-                      <div className="relative">
-                        <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-                        <input 
-                          type="text"
-                          {...register("meetingLink")}
-                          placeholder="https://zoom.us/j/..."
-                          className={`w-full bg-background border ${errors.meetingLink ? 'border-rose-500' : 'border-border'} rounded-lg pl-9 pr-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all`}
-                        />
-                      </div>
-                      {errors.meetingLink && <p className="text-xs text-rose-500">{errors.meetingLink.message}</p>}
                     </div>
 
                     {/* Description */}

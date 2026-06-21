@@ -152,7 +152,6 @@ export const createGoogleEvent = async (userId, event) => {
   const googleEventPayload = {
     summary: event.title,
     description: event.description || "",
-    location: event.location || "",
     start: {
       dateTime: startDateTime,
       timeZone,
@@ -202,7 +201,6 @@ export const updateGoogleEvent = async (userId, googleEventId, event) => {
   const googleEventPayload = {
     summary: event.title,
     description: event.description || "",
-    location: event.location || "",
     start: {
       dateTime: startDateTime,
       timeZone,
@@ -304,7 +302,6 @@ export const syncEvents = async (userId) => {
     const eventPayload = {
       title: gEvt.summary || "Google Calendar Event",
       description: gEvt.description || "",
-      location: gEvt.location || "",
       date: new Date(startDate.toISOString().split("T")[0]),
       startTime: startTimeStr,
       endTime: endTimeStr,
