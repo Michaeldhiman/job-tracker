@@ -40,12 +40,12 @@ function CompaniesPage() {
           <h1 className="text-2xl font-bold tracking-tight text-text">Companies CRM</h1>
           <p className="text-sm text-text-muted mt-1">Manage target companies and notes.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative w-64">
+        <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 xs:flex-initial xs:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-            <Input placeholder="Search companies..." className="pl-9 h-9" />
+            <Input placeholder="Search companies..." className="pl-9 h-9 w-full" />
           </div>
-          <Button className="h-9" onClick={() => setShowAddCompany(true)}>
+          <Button className="h-9 w-full xs:w-auto justify-center" onClick={() => setShowAddCompany(true)}>
             <Plus className="w-4 h-4 mr-2" /> Add Company
           </Button>
         </div>

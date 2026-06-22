@@ -19,9 +19,8 @@ function WebGLBackground() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    // Disable WebGL render loop on mobile for battery and CPU optimization
-    if (window.innerWidth < 768) return;
 
+    const isMobile = window.innerWidth < 768;
     const container = containerRef.current;
     if (!container) return;
 
@@ -31,14 +30,17 @@ function WebGLBackground() {
     camera.position.y = 3;
     camera.lookAt(0, 0, 0);
 
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !isMobile });
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+    renderer.domElement.style.display = 'block';
     container.appendChild(renderer.domElement);
 
-    // Grid details
-    const count = 55;
-    const spacing = 0.35;
+    // Grid details - reduce grid count on mobile to lower vertex calculation overhead
+    const count = isMobile ? 30 : 55;
+    const spacing = isMobile ? 0.6 : 0.35;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(count * count * 3);
     const colors = new Float32Array(count * count * 3);
@@ -54,8 +56,6 @@ function WebGLBackground() {
 
         // Gradient from Indigo to Emerald/Teal
         const ratio = i / count;
-        // Indigo: rgb(79, 70, 229) -> 0.31, 0.27, 0.9
-        // Emerald: rgb(16, 185, 129) -> 0.06, 0.72, 0.5
         colors[idx] = 0.31 * (1 - ratio) + 0.06 * ratio;
         colors[idx + 1] = 0.27 * (1 - ratio) + 0.72 * ratio;
         colors[idx + 2] = 0.9 * (1 - ratio) + 0.5 * ratio;
@@ -80,7 +80,7 @@ function WebGLBackground() {
     const texture = new THREE.CanvasTexture(canvas);
 
     const material = new THREE.PointsMaterial({
-      size: 0.12,
+      size: isMobile ? 0.22 : 0.12, // Scale particle size slightly larger on mobile to maintain coverage density
       vertexColors: true,
       transparent: true,
       opacity: 0.45,
@@ -101,6 +101,16 @@ function WebGLBackground() {
     };
     window.addEventListener('mousemove', handleMouseMove);
 
+    // Mobile touch shift - passive listener to avoid blocking natural page scrolling
+    const handleTouchMove = (e) => {
+      if (e.touches.length > 0) {
+        const touch = e.touches[0];
+        targetMouseX = (touch.clientX / window.innerWidth - 0.5) * 2;
+        targetMouseY = (touch.clientY / window.innerHeight - 0.5) * 2;
+      }
+    };
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+
     const handleResize = () => {
       if (!container) return;
       camera.aspect = container.clientWidth / container.clientHeight;
@@ -120,15 +130,26 @@ function WebGLBackground() {
       for (let i = 0; i < countTotal; i++) {
         const x = posAttr.getX(i);
         const z = posAttr.getZ(i);
-        // Double-wave sine/cosine grid movement
         const y = Math.sin(x * 0.4 + time * 1.3) * Math.cos(z * 0.4 + time * 1.3) * 0.45;
         posAttr.setY(i, y);
       }
       posAttr.needsUpdate = true;
 
       // Smooth camera interpolation
-      camera.position.x += (targetMouseX * 1.5 - camera.position.x) * 0.05;
-      camera.position.y += (targetMouseY * 1.0 + 3 - camera.position.y) * 0.05;
+      if (isMobile) {
+        // Automatic slow panning loop on mobile combined with passive touch shifts
+        const idleX = Math.sin(time * 0.35) * 1.2;
+        const idleY = Math.cos(time * 0.25) * 0.4 + 3.0;
+
+        const targetX = targetMouseX !== 0 ? targetMouseX * 1.2 : idleX;
+        const targetY = targetMouseY !== 0 ? targetMouseY * 0.8 + 3.0 : idleY;
+
+        camera.position.x += (targetX - camera.position.x) * 0.03;
+        camera.position.y += (targetY - camera.position.y) * 0.03;
+      } else {
+        camera.position.x += (targetMouseX * 1.5 - camera.position.x) * 0.05;
+        camera.position.y += (targetMouseY * 1.0 + 3 - camera.position.y) * 0.05;
+      }
       camera.lookAt(0, 0, 0);
 
       renderer.render(scene, camera);
@@ -139,6 +160,7 @@ function WebGLBackground() {
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
 
@@ -202,6 +224,9 @@ function Card3DTilt({ children, className = '', glowColor = 'rgba(99, 102, 241, 
 
   const handleMouseMove = (e) => {
     if (!cardRef.current) return;
+    // Skip tilt on touch devices for smoother scrolling
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+
     const { left, top, width, height } = cardRef.current.getBoundingClientRect();
     const mouseX = e.clientX - left;
     const mouseY = e.clientY - top;
@@ -315,11 +340,16 @@ export default function LandingPage() {
   const [activeFaq, setActiveFaq] = useState(null);
   const [activeShowcase, setActiveShowcase] = useState(0);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Mouse trail spotlight glow coordinates
   const [mouseSpotlight, setMouseSpotlight] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+
     const handleScroll = () => setIsScrolled(window.scrollY > 25);
     window.addEventListener('scroll', handleScroll, { passive: true });
 
@@ -329,6 +359,7 @@ export default function LandingPage() {
     window.addEventListener('mousemove', handleMouseMoveSpotlight);
 
     return () => {
+      window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('mousemove', handleMouseMoveSpotlight);
     };
@@ -342,16 +373,34 @@ export default function LandingPage() {
   });
 
   // Transform coordinates for problem-to-solution stack
-  const chaosCard1X = useTransform(scrollYProgress, [0, 0.4, 0.75], [-180, -40, 0]);
-  const chaosCard1Y = useTransform(scrollYProgress, [0, 0.4, 0.75], [50, 10, 0]);
+  const desktopCard1X = useTransform(scrollYProgress, [0, 0.4, 0.75], [-180, -40, 0]);
+  const mobileCard1X = useTransform(scrollYProgress, [0, 0.4, 0.75], [-20, -5, 0]);
+  const chaosCard1X = isMobile ? mobileCard1X : desktopCard1X;
+
+  const desktopCard1Y = useTransform(scrollYProgress, [0, 0.4, 0.75], [50, 10, 0]);
+  const mobileCard1Y = useTransform(scrollYProgress, [0, 0.4, 0.75], [15, 5, 0]);
+  const chaosCard1Y = isMobile ? mobileCard1Y : desktopCard1Y;
+
   const chaosCard1Rotate = useTransform(scrollYProgress, [0, 0.4, 0.75], [-12, -6, 0]);
 
-  const chaosCard2X = useTransform(scrollYProgress, [0, 0.4, 0.75], [190, 60, 0]);
-  const chaosCard2Y = useTransform(scrollYProgress, [0, 0.4, 0.75], [-40, -10, 0]);
+  const desktopCard2X = useTransform(scrollYProgress, [0, 0.4, 0.75], [190, 60, 0]);
+  const mobileCard2X = useTransform(scrollYProgress, [0, 0.4, 0.75], [20, 5, 0]);
+  const chaosCard2X = isMobile ? mobileCard2X : desktopCard2X;
+
+  const desktopCard2Y = useTransform(scrollYProgress, [0, 0.4, 0.75], [-40, -10, 0]);
+  const mobileCard2Y = useTransform(scrollYProgress, [0, 0.4, 0.75], [-15, -5, 0]);
+  const chaosCard2Y = isMobile ? mobileCard2Y : desktopCard2Y;
+
   const chaosCard2Rotate = useTransform(scrollYProgress, [0, 0.4, 0.75], [14, 7, 0]);
 
-  const chaosCard3X = useTransform(scrollYProgress, [0, 0.4, 0.75], [-80, -20, 0]);
-  const chaosCard3Y = useTransform(scrollYProgress, [0, 0.4, 0.75], [-160, -50, 0]);
+  const desktopCard3X = useTransform(scrollYProgress, [0, 0.4, 0.75], [-80, -20, 0]);
+  const mobileCard3X = useTransform(scrollYProgress, [0, 0.4, 0.75], [-15, -5, 0]);
+  const chaosCard3X = isMobile ? mobileCard3X : desktopCard3X;
+
+  const desktopCard3Y = useTransform(scrollYProgress, [0, 0.4, 0.75], [-160, -50, 0]);
+  const mobileCard3Y = useTransform(scrollYProgress, [0, 0.4, 0.75], [-25, -10, 0]);
+  const chaosCard3Y = isMobile ? mobileCard3Y : desktopCard3Y;
+
   const chaosCard3Rotate = useTransform(scrollYProgress, [0, 0.4, 0.75], [8, 3, 0]);
 
   const alignBorderColor = useTransform(
@@ -431,7 +480,7 @@ export default function LandingPage() {
       />
 
       {/* Modern Top Gradient Mesh Grid background */}
-      <div className="absolute inset-0 z-0 bg-[linear-gradient(to_bottom,rgba(9,9,11,0)_80%,#09090b_100%)] pointer-events-none">
+      <div className="absolute inset-0 z-0 bg-[linear-gradient(to_bottom,rgba(9,9,11,0)_80%,#09090b_100%)] pointer-events-none overflow-hidden">
         <div className="absolute top-0 inset-x-0 h-[800px] bg-[radial-gradient(ellipse_at_top,rgba(79,70,229,0.15)_0%,rgba(16,185,129,0.02)_50%,transparent_100%)]" />
         <div className="absolute top-[300px] left-1/4 w-[350px] h-[350px] bg-indigo-500/10 blur-[130px] rounded-full animate-pulse pointer-events-none" />
         <div className="absolute top-[100px] right-1/4 w-[400px] h-[400px] bg-emerald-500/5 blur-[150px] rounded-full animate-pulse pointer-events-none" />
@@ -439,41 +488,41 @@ export default function LandingPage() {
 
       {/* Header */}
       <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-[#09090b]/85 backdrop-blur-xl border-b border-white/[0.06] py-3.5 shadow-2xl' : 'bg-transparent py-5'}`}>
-        <div className="container mx-auto px-6 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 z-50 group">
+        <div className="container mx-auto px-4 lg:px-6 flex items-center justify-between gap-4">
+          <Link to="/" className="flex items-center gap-2.5 z-50 group whitespace-nowrap shrink-0">
             <div className="w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-primary to-emerald-500 shadow-glass flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
               <Briefcase className="w-4.5 h-4.5 text-white" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-white flex items-center gap-1.5">
+            <span className="text-xl font-bold tracking-tight text-white flex items-center gap-2 whitespace-nowrap">
               Snap
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-primary">Job</span>
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary border border-primary/20 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)] whitespace-nowrap">Job</span>
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
-            <a href="#problems" className="hover:text-white transition-colors">How It Works</a>
-            <a href="#showcase" className="hover:text-white transition-colors">Features</a>
-            <a href="#compare" className="hover:text-white transition-colors">Excel vs Snap Job</a>
-            <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
+          <nav className="hidden md:flex items-center gap-x-4 lg:gap-x-8 text-sm font-medium text-zinc-400 shrink-0">
+            <a href="#problems" className="hover:text-white transition-colors whitespace-nowrap">How It Works</a>
+            <a href="#showcase" className="hover:text-white transition-colors whitespace-nowrap">Features</a>
+            <a href="#compare" className="hover:text-white transition-colors whitespace-nowrap">Excel vs Snap Job</a>
+            <a href="#faq" className="hover:text-white transition-colors whitespace-nowrap">FAQ</a>
           </nav>
 
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-x-2 lg:gap-x-4 shrink-0">
             {isAuthenticated ? (
               <MagneticButton>
-                <Link to="/dashboard" className="px-5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-medium text-white transition-all">
+                <Link to="/dashboard" className="px-3.5 py-2 lg:px-5 lg:py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs lg:text-sm font-medium text-white transition-all whitespace-nowrap">
                   Dashboard
                 </Link>
               </MagneticButton>
             ) : (
               <>
                 <MagneticButton>
-                  <Link to="/login" className="px-5 py-2.5 rounded-xl bg-white/[0.03] hover:bg-white/10 border border-white/10 text-sm font-semibold text-zinc-200 hover:text-white transition-all duration-300 backdrop-blur-md">
+                  <Link to="/login" className="px-3.5 py-2 lg:px-5 lg:py-2.5 rounded-xl bg-white/[0.03] hover:bg-white/10 border border-white/10 text-xs lg:text-sm font-semibold text-zinc-200 hover:text-white transition-all duration-300 backdrop-blur-md whitespace-nowrap">
                     Log in
                   </Link>
                 </MagneticButton>
                 <MagneticButton>
-                  <Link to="/register" className="px-5 py-2.5 rounded-xl bg-primary hover:bg-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.35)] text-sm font-bold text-white transition-all flex items-center gap-1.5 border-t border-white/15">
+                  <Link to="/register" className="px-3.5 py-2 lg:px-5 lg:py-2.5 rounded-xl bg-primary hover:bg-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.35)] text-xs lg:text-sm font-bold text-white transition-all flex items-center gap-1.5 border-t border-white/15 whitespace-nowrap">
                     Start Free <ChevronRight className="w-4 h-4" />
                   </Link>
                 </MagneticButton>
@@ -517,18 +566,18 @@ export default function LandingPage() {
 
       <main>
         {/* --- HERO SECTION --- */}
-        <section className="relative min-h-screen flex items-center pt-28 pb-16 overflow-hidden">
+        <section className="relative min-h-[85vh] lg:min-h-screen flex items-center pt-24 pb-8 md:pt-28 md:pb-12 overflow-hidden">
           {/* Three.js interactive wave canvas in the background */}
           <WebGLBackground />
 
           <div className="container mx-auto px-6 relative z-10">
-            <div className="max-w-4xl mx-auto text-center mb-16">
+            <div className="max-w-4xl mx-auto text-center mb-6 md:mb-10">
               {/* Top Tagline Badge */}
               <motion.div 
                 initial={{ opacity: 0, y: 15 }} 
                 animate={{ opacity: 1, y: 0 }} 
                 transition={{ duration: 0.5 }}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-bold text-indigo-400 uppercase tracking-widest mb-8"
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] sm:text-xs font-bold text-indigo-400 uppercase tracking-wider sm:tracking-widest mb-3 md:mb-5"
               >
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
                 Next-Gen Job Application CRM
@@ -539,7 +588,7 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 25 }} 
                 animate={{ opacity: 1, y: 0 }} 
                 transition={{ duration: 0.7, delay: 0.1 }}
-                className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white leading-[1.08] mb-8"
+                className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight text-white leading-[1.1] mb-3 md:mb-5"
               >
                 Turn Your Job Search <br className="hidden md:inline" />
                 Into an <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-400 to-emerald-500">Automated Funnel.</span>
@@ -550,38 +599,45 @@ export default function LandingPage() {
                 initial={{ opacity: 0, y: 25 }} 
                 animate={{ opacity: 1, y: 0 }} 
                 transition={{ duration: 0.7, delay: 0.2 }}
-                className="text-base sm:text-lg md:text-xl text-zinc-400 mb-12 max-w-2.5xl mx-auto leading-relaxed"
+                className="text-base sm:text-lg md:text-xl text-zinc-400 mb-4 md:mb-6 max-w-2.5xl mx-auto leading-relaxed"
               >
-                Spreadsheets are where recruiters and schedules get lost. Take control of your career with interactive pipelines, resume management, and automatic conversion analysis.
+                Ditch messy spreadsheets. Organize applications, track interviews, and analyze your conversion rates in one visual, automated pipeline.
               </motion.p>
 
-              {/* CTAs */}
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                transition={{ duration: 0.7, delay: 0.3 }}
-                className="flex flex-col sm:flex-row items-center justify-center gap-5 max-w-md mx-auto sm:max-w-none"
-              >
-                <MagneticButton className="w-full sm:w-auto">
-                  <Link to="/register" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-[#09090b] font-bold text-base hover:bg-zinc-200 transition-all shadow-[0_0_35px_rgba(255,255,255,0.25)] border-t border-white/20">
-                    Get Started Free <ArrowRight className="w-4.5 h-4.5" />
-                  </Link>
-                </MagneticButton>
-                <MagneticButton className="w-full sm:w-auto">
-                  <a href="#problems" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-base transition-all backdrop-blur-md">
-                    See How It Works
-                  </a>
-                </MagneticButton>
-              </motion.div>
+              {/* CTAs & Trust Social Proof */}
+              <div className="flex flex-col items-center gap-5 mt-5">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ duration: 0.7, delay: 0.3 }}
+                  className="flex flex-col sm:flex-row items-center justify-center gap-3.5 sm:gap-5 max-w-md mx-auto sm:max-w-none w-full sm:w-auto"
+                >
+                  <MagneticButton className="w-full sm:w-auto">
+                    <Link to="/register" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white text-[#09090b] font-bold text-base hover:bg-zinc-200 transition-all shadow-[0_0_35px_rgba(255,255,255,0.25)] border-t border-white/20">
+                      Get Started Free <ArrowRight className="w-4.5 h-4.5" />
+                    </Link>
+                  </MagneticButton>
+                  <MagneticButton className="w-full sm:w-auto">
+                    <a href="#problems" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-base transition-all backdrop-blur-md">
+                      See How It Works
+                    </a>
+                  </MagneticButton>
+                </motion.div>
 
-              <motion.p 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                transition={{ delay: 0.9, duration: 0.5 }}
-                className="mt-8 text-xs text-zinc-500 font-semibold uppercase tracking-wider"
-              >
-                Empowering 10,000+ candidates landing offers at top startups.
-              </motion.p>
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  transition={{ delay: 0.5, duration: 0.5 }}
+                  className="flex flex-col sm:flex-row items-center gap-2.5 text-center sm:text-left text-[11px] sm:text-xs text-zinc-400 bg-white/[0.03] border border-white/[0.06] px-4 py-2.5 sm:py-2 rounded-2xl sm:rounded-full backdrop-blur-md max-w-sm sm:max-w-none"
+                >
+                  <div className="flex -space-x-1.5 shrink-0">
+                    <span className="w-5 h-5 rounded-full bg-indigo-500/80 border border-[#09090b] flex items-center justify-center text-[8px] font-bold text-white">S</span>
+                    <span className="w-5 h-5 rounded-full bg-emerald-500/80 border border-[#09090b] flex items-center justify-center text-[8px] font-bold text-white">M</span>
+                    <span className="w-5 h-5 rounded-full bg-purple-500/80 border border-[#09090b] flex items-center justify-center text-[8px] font-bold text-white">E</span>
+                  </div>
+                  <span className="leading-normal">Empowering 10,000+ candidates landing offers at top startups.</span>
+                </motion.div>
+              </div>
             </div>
 
             {/* Hero Interactive 3D Mockup Container */}
@@ -589,19 +645,19 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 80 }} 
               animate={{ opacity: 1, y: 0 }} 
               transition={{ duration: 0.9, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-              className="max-w-5.5xl mx-auto mt-6 relative"
+              className="max-w-5.5xl mx-auto mt-4 sm:mt-6 relative"
             >
               {/* Ambient bottom shadow gradient mask */}
               <div className="absolute inset-x-0 bottom-[-5px] h-[100px] bg-gradient-to-t from-[#09090b] to-transparent z-20 pointer-events-none" />
 
               <Card3DTilt className="rounded-2xl border border-white/10 bg-[#121214]/65 backdrop-blur-2xl p-2 sm:p-3 shadow-2xl">
                 {/* Mockup Title bar */}
-                <div className="flex items-center justify-between px-4 py-2 border-b border-white/5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
-                    <span className="text-[11px] text-zinc-500 font-mono ml-4">snapjob.io/dashboard/funnel</span>
+                <div className="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-white/5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-rose-500/80 shrink-0" />
+                    <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amber-500/80 shrink-0" />
+                    <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-500/80 shrink-0" />
+                    <span className="text-[10px] sm:text-[11px] text-zinc-500 font-mono ml-2 sm:ml-4 truncate max-w-[140px] sm:max-w-none">snapjob.io/dashboard/funnel</span>
                   </div>
                   <div className="flex items-center gap-2 text-zinc-500">
                     <div className="w-4 h-4 rounded-full bg-white/5" />
@@ -623,18 +679,18 @@ export default function LandingPage() {
 
                   {/* Right Dashboard Area mockup */}
                   <div className="col-span-12 md:col-span-9 p-2 flex flex-col gap-5">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <div>
                         <span className="text-[10px] uppercase font-bold text-indigo-400 tracking-widest">Workspace</span>
-                        <h4 className="text-lg font-bold text-white">Active Applications</h4>
+                        <h4 className="text-base sm:text-lg font-bold text-white">Active Applications</h4>
                       </div>
-                      <div className="px-3.5 py-1.5 bg-primary rounded-lg text-xs font-bold text-white shadow-lg flex items-center gap-1 cursor-default">
+                      <div className="px-3 py-1.5 sm:px-3.5 bg-primary rounded-lg text-xs font-bold text-white shadow-lg flex items-center gap-1 cursor-default self-start sm:self-auto">
                         <Plus className="w-3.5 h-3.5" /> Add Application
                       </div>
                     </div>
 
-                    {/* KPI widgets mockup */}
-                    <div className="grid grid-cols-3 gap-3.5">
+                     {/* KPI widgets mockup */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3.5">
                       {[
                         { 
                           title: 'Total Applications', 
@@ -666,7 +722,7 @@ export default function LandingPage() {
                     </div>
 
                     {/* Central columns grid mockup */}
-                    <div className="flex-1 grid grid-cols-4 gap-3">
+                    <div className="flex-1 grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                       {/* Column 1: Applied */}
                       <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 flex flex-col gap-2 relative">
                         <div className="flex justify-between text-[10px] font-bold text-zinc-400 border-b border-white/5 pb-1">
@@ -782,7 +838,7 @@ export default function LandingPage() {
         </section>
 
         {/* --- PROBLEM TO SOLUTION STORY SECTION --- */}
-        <section id="problems" ref={problemsRef} className="py-28 sm:py-36 border-t border-white/[0.06] relative overflow-hidden bg-gradient-to-b from-transparent via-white/[0.01] to-transparent">
+        <section id="problems" ref={problemsRef} className="pt-20 pb-10 md:pt-28 md:pb-12 border-t border-white/[0.06] relative overflow-hidden bg-gradient-to-b from-transparent via-white/[0.01] to-transparent">
           <div className="container mx-auto px-6 max-w-6xl">
             <div className="text-center mb-24 max-w-3xl mx-auto">
               <span className="text-xs font-bold text-rose-400 uppercase tracking-widest px-3 py-1 rounded-full bg-rose-500/5 border border-rose-500/10">The Status Quo</span>
@@ -875,16 +931,36 @@ export default function LandingPage() {
             </div>
 
             {/* Transition subtitle */}
-            <div className="mt-20 text-center max-w-lg mx-auto">
+            <div className="mt-12 text-center max-w-lg mx-auto flex flex-col items-center">
               <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Scroll to align</p>
-              <div className="w-4 h-8 border border-white/10 rounded-full mx-auto mt-3 flex justify-center p-1.5"><div className="w-1 h-2 bg-indigo-400 rounded-full animate-bounce" /></div>
-              <h3 className="text-xl font-bold text-white mt-4">Chaos aligns into clean pipeline columns on Snap Job.</h3>
+              <div className="w-4 h-8 border border-white/10 rounded-full mt-3 flex justify-center p-1.5">
+                <div className="w-1 h-2 bg-indigo-400 rounded-full animate-bounce" />
+              </div>
+              <h3 className="text-xl font-bold text-white mt-4">
+                Watch your job search chaos align into a structured, automated pipeline.
+              </h3>
+              
+              {/* Animated Connector Line */}
+              <div className="relative h-20 w-px mt-8 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/20 via-zinc-800 to-transparent w-full h-full" />
+                <motion.div 
+                  animate={{ 
+                    y: ["-100%", "200%"] 
+                  }}
+                  transition={{ 
+                    duration: 2, 
+                    repeat: Infinity, 
+                    ease: "linear" 
+                  }}
+                  className="absolute top-0 left-0 w-full h-12 bg-gradient-to-b from-transparent via-indigo-500 to-transparent"
+                />
+              </div>
             </div>
           </div>
         </section>
 
         {/* --- INTERACTIVE PRODUCT SHOWCASE SECTION --- */}
-        <section id="showcase" className="py-28 sm:py-36 relative border-t border-white/[0.06]">
+        <section id="showcase" className="pt-10 pb-20 md:pt-12 md:pb-28 relative">
           <div className="container mx-auto px-6 max-w-6xl">
             <div className="text-center mb-20">
               <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest px-3 py-1 rounded-full bg-primary/5 border border-primary/10">Interactive Demos</span>
@@ -955,7 +1031,7 @@ export default function LandingPage() {
                           <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-primary/20 animate-pulse">Running Automator</span>
                         </div>
                         
-                        <div className="flex-1 grid grid-cols-3 gap-4 py-4">
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 py-4">
                           {/* Column 1: Applied */}
                           <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3 flex flex-col gap-3 relative">
                             <span className="text-[10px] font-bold text-zinc-500 uppercase pb-1.5 border-b border-white/5">Applied</span>
@@ -1019,7 +1095,7 @@ export default function LandingPage() {
                         </div>
 
                         {/* Interactive Bars visual */}
-                        <div className="flex-1 flex items-end justify-around gap-6 pt-6 border-b border-white/5 pb-2">
+                        <div className="flex-1 flex items-end justify-around gap-2 sm:gap-6 pt-6 border-b border-white/5 pb-2">
                           {[
                             { label: 'Applications', rate: '100%', height: '100%', color: 'from-indigo-600 to-indigo-500' },
                             { label: 'Screenings', rate: '52%', height: '52%', color: 'from-indigo-500 to-indigo-400' },
@@ -1149,7 +1225,7 @@ export default function LandingPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
               {/* Spreadsheet Chaos Side */}
-              <div className="border border-rose-500/10 hover:border-rose-500/20 transition-colors rounded-3xl p-6 md:p-8 bg-[#121214]/40 backdrop-blur-2xl relative overflow-hidden shadow-xl flex flex-col justify-between">
+              <div className="border border-rose-500/10 hover:border-rose-500/20 transition-colors rounded-3xl p-4 sm:p-6 md:p-8 bg-[#121214]/40 backdrop-blur-2xl relative overflow-hidden shadow-xl flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
@@ -1159,18 +1235,18 @@ export default function LandingPage() {
                   </div>
                   
                   {/* Spreadsheet Grid Simulation */}
-                  <div className="space-y-3 font-mono text-[10px] text-zinc-500 bg-[#09090b]/80 p-4 rounded-xl border border-white/5">
-                    <div className="grid grid-cols-4 border-b border-white/10 pb-2 text-zinc-400 font-bold">
+                  <div className="space-y-3 font-mono text-[9px] sm:text-[10px] text-zinc-500 bg-[#09090b]/80 p-3 sm:p-4 rounded-xl border border-white/5">
+                    <div className="grid grid-cols-4 border-b border-white/10 pb-2 text-zinc-400 font-bold font-mono">
                       <span>Company</span><span>Stage</span><span>Resume</span><span>Follow Up</span>
                     </div>
                     <div className="grid grid-cols-4 border-b border-white/5 py-1.5 text-rose-400/80">
-                      <span className="truncate">Google</span><span>Applied</span><span className="truncate">cv_v4_final.pdf</span><span className="text-rose-500 font-bold animate-pulse">MISSED CALL</span>
+                      <span className="truncate">Google</span><span>Applied</span><span className="truncate">cv_v4_final.pdf</span><span className="text-rose-500 font-bold animate-pulse truncate">MISSED CALL</span>
                     </div>
                     <div className="grid grid-cols-4 border-b border-white/5 py-1.5 text-zinc-400">
-                      <span className="truncate">Stripe</span><span>Technical</span><span className="truncate">resume_old.pdf</span><span className="text-amber-500 font-bold">Forgot (3d ago)</span>
+                      <span className="truncate">Stripe</span><span>Technical</span><span className="truncate">resume_old.pdf</span><span className="text-amber-500 font-bold truncate">Forgot (3d ago)</span>
                     </div>
                     <div className="grid grid-cols-4 py-1.5 text-zinc-650">
-                      <span className="truncate">Meta</span><span>Applied</span><span className="truncate">cv_latest.pdf</span><span>No reminders</span>
+                      <span className="truncate">Meta</span><span>Applied</span><span className="truncate">cv_latest.pdf</span><span className="truncate">No reminders</span>
                     </div>
                   </div>
                 </div>
@@ -1188,7 +1264,7 @@ export default function LandingPage() {
               </div>
 
               {/* Snap Job CRM Side */}
-              <div className="border border-emerald-500/15 hover:border-emerald-500/30 transition-colors rounded-3xl p-6 md:p-8 bg-gradient-to-br from-primary/5 to-emerald-500/[0.02] backdrop-blur-2xl relative overflow-hidden shadow-2xl flex flex-col justify-between">
+              <div className="border border-emerald-500/15 hover:border-emerald-500/30 transition-colors rounded-3xl p-4 sm:p-6 md:p-8 bg-gradient-to-br from-primary/5 to-emerald-500/[0.02] backdrop-blur-2xl relative overflow-hidden shadow-2xl flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
@@ -1198,7 +1274,7 @@ export default function LandingPage() {
                   </div>
 
                   {/* CRM Card Simulation */}
-                  <div className="bg-[#09090b]/80 p-4 rounded-xl border border-white/5 space-y-3.5">
+                  <div className="bg-[#09090b]/80 p-3 sm:p-4 rounded-xl border border-white/5 space-y-3.5">
                     <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-xs text-white">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded bg-primary flex items-center justify-center font-bold text-[10px]">S</div>
@@ -1210,7 +1286,7 @@ export default function LandingPage() {
                       <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 font-bold rounded text-[9px] border border-emerald-500/10 animate-pulse">Active Interview</span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row justify-between gap-2 border-t border-white/5 pt-2.5 text-[10px] text-zinc-400 font-medium">
+                    <div className="flex flex-col sm:flex-row justify-between gap-2 border-t border-white/5 pt-2.5 text-[9px] sm:text-[10px] text-zinc-400 font-medium">
                       <div className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-indigo-400" /> Linked: Stripe_v2.pdf</div>
                       <div className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-amber-500" /> Synced to Calendar: Today 4:30 PM</div>
                     </div>
@@ -1265,10 +1341,10 @@ export default function LandingPage() {
                 transition={{ duration: 0.8 }}
               >
                 <Card3DTilt className="bg-[#121214]/65 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-2xl">
-                  <div className="mb-6 flex justify-between items-end">
+                  <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 sm:gap-0">
                     <div>
                       <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Funnel Yield</p>
-                      <h3 className="text-3xl font-extrabold text-white">24.5% Interview Rate</h3>
+                      <h3 className="text-2xl sm:text-3xl font-extrabold text-white">24.5% Interview Rate</h3>
                     </div>
                     <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold rounded-full text-[11px]">+5.2% this week</span>
                   </div>
@@ -1340,7 +1416,7 @@ export default function LandingPage() {
                 { label: "Resumes Uploaded", val: "4,000+" },
                 { label: "Offers Received", val: "800+" }
               ].map((stat, i) => (
-                <div key={i} className="bg-white/[0.01] border border-white/5 rounded-2xl p-6.5 text-center">
+                <div key={i} className="bg-white/[0.01] border border-white/5 rounded-2xl p-6 text-center">
                   <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{stat.label}</span>
                   <p className="text-3xl sm:text-4xl font-extrabold text-white mt-2">
                     <AnimatedCounter value={stat.val} />
@@ -1412,7 +1488,7 @@ export default function LandingPage() {
                 </div>
                 
                 {/* Contact Modal Trigger card */}
-                <div className="p-10 rounded-3xl bg-white/[0.02] border border-white/10 flex flex-col gap-6 shadow-2xl relative overflow-hidden group">
+                <div className="p-6 sm:p-10 rounded-3xl bg-white/[0.02] border border-white/10 flex flex-col gap-6 shadow-2xl relative overflow-hidden group">
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
                   <h3 className="text-2xl font-bold text-white relative z-10">Need custom support?</h3>
                   <p className="text-sm text-zinc-400 leading-relaxed relative z-10">Submit a ticket and our engineering team will get back to you within 24 hours.</p>
@@ -1446,7 +1522,7 @@ export default function LandingPage() {
                       className={`border rounded-3xl bg-white/[0.01] overflow-hidden transition-all duration-300 ${isActive ? 'border-primary bg-primary/[0.02] shadow-[0_0_25px_rgba(79,70,229,0.08)]' : 'border-white/5 hover:border-white/10'}`}
                     >
                       <button 
-                        className="w-full px-8 py-6.5 flex items-center justify-between font-bold text-base sm:text-lg text-left text-white hover:bg-white/[0.02] transition-colors"
+                        className="w-full px-5 py-4 sm:px-8 sm:py-6.5 flex items-center justify-between font-bold text-base sm:text-lg text-left text-white hover:bg-white/[0.02] transition-colors"
                         onClick={() => setActiveFaq(isActive ? null : i)}
                       >
                         <span className="pr-4">{faq.q}</span>
@@ -1458,7 +1534,7 @@ export default function LandingPage() {
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            className="px-8 pb-7 text-sm sm:text-base text-zinc-400 leading-relaxed font-medium"
+                            className="px-5 pb-5 sm:px-8 sm:pb-7 text-sm sm:text-base text-zinc-400 leading-relaxed font-medium"
                           >
                             {faq.a}
                           </motion.div>
@@ -1480,7 +1556,7 @@ export default function LandingPage() {
           
           <div className="container mx-auto px-6 relative z-10 text-center max-w-4xl flex flex-col items-center">
             {/* Visual Journey Nodes */}
-            <div className="flex items-center justify-center gap-2 sm:gap-4 mb-12 max-w-lg mx-auto relative z-10">
+            <div className="flex items-center justify-center gap-1 sm:gap-4 mb-12 max-w-lg mx-auto relative z-10">
               {[
                 { label: 'Applied', icon: Briefcase, color: 'border-primary/30 text-primary bg-primary/10' },
                 { label: 'Screening', icon: Search, color: 'border-amber-500/30 text-amber-500 bg-amber-500/10' },
@@ -1497,10 +1573,10 @@ export default function LandingPage() {
                       transition={{ delay: i * 0.15, type: 'spring', stiffness: 100 }}
                       className="flex flex-col items-center gap-1.5"
                     >
-                      <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shadow-lg ${node.color}`}>
-                        <IconComp className="w-5 h-5" />
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl border flex items-center justify-center shadow-lg ${node.color}`}>
+                        <IconComp className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
-                      <span className="text-[10px] font-bold text-zinc-400 tracking-wider uppercase">{node.label}</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 tracking-wider uppercase">{node.label}</span>
                     </motion.div>
                     {i < 3 && (
                       <motion.div 
@@ -1642,7 +1718,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-lg bg-[#121214]/75 border border-white/10 backdrop-blur-2xl rounded-[2rem] p-10 sm:p-12 shadow-[0_0_50px_rgba(79,70,229,0.18)] relative z-10 overflow-hidden"
+              className="w-full max-w-lg bg-[#121214]/75 border border-white/10 backdrop-blur-2xl rounded-2xl sm:rounded-[2rem] p-6 sm:p-12 shadow-[0_0_50px_rgba(79,70,229,0.18)] relative z-10 overflow-hidden"
             >
               {/* Inner ambient glow highlights */}
               <div className="absolute top-0 left-0 w-[150px] h-[150px] bg-primary/15 blur-[60px] rounded-full pointer-events-none" />
@@ -1650,7 +1726,7 @@ export default function LandingPage() {
 
               <button 
                 onClick={() => setShowContactModal(false)}
-                className="absolute top-8 right-8 p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-all z-20"
+                className="absolute top-4 right-4 sm:top-8 sm:right-8 p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-all z-20"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" />

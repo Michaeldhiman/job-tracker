@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth.js';
-import { useTheme } from '../../context/ThemeContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import {
-  Bell, Menu, Sun, Moon, Calendar, FileText, Briefcase,
-  TrendingUp, Info, CheckCircle2, RefreshCw, X, Dot
+  Bell, Menu, Calendar, FileText, Briefcase,
+  TrendingUp, Info, CheckCircle2, RefreshCw, X
 } from 'lucide-react';
 import { getActivityLogs } from '../../api/jobsApi.js';
 
@@ -75,7 +74,6 @@ const NOTIFICATION_LIMIT = NOTIFICATION_SETTINGS.MAX_LIMIT;
 
 function TopNavbar({ onMenuClick }) {
   const { user } = useAuth();
-  const { theme, setTheme } = useTheme();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -164,8 +162,6 @@ function TopNavbar({ onMenuClick }) {
     fetchNotifications({ silent: true });
   };
 
-  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
-
   // Group by date label
   const grouped = notifications.reduce((acc, log) => {
     const d = new Date(log.createdAt);
@@ -194,16 +190,6 @@ function TopNavbar({ onMenuClick }) {
       </div>
 
       <div className="flex items-center gap-2" ref={dropdownRef}>
-        {/* Theme toggle */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 text-text-muted hover:text-text transition-colors rounded-lg hover:bg-surface-elevated"
-          aria-label="Toggle theme"
-          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-        >
-          {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-        </button>
-
         {/* Notification bell */}
         <div className="relative">
           <button

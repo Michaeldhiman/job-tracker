@@ -56,6 +56,11 @@ export const getGoogleAuthUrl = async () => {
   return response.data;
 };
 
+export const updateCalendarPreferences = async (preferences) => {
+  const response = await axiosClient.put('/api/calendar/preferences', preferences);
+  return response.data;
+};
+
 /**
  * Disconnects the user's Google Calendar account
  */

@@ -2,7 +2,8 @@ import { Router } from "express";
 import { 
   initOAuth, oauthCallback, getEvents, 
   createEvent, updateEvent, deleteEvent, 
-  syncCalendar, getConnectionStatus, disconnectCalendar 
+  syncCalendar, getConnectionStatus, disconnectCalendar,
+  updateCalendarPreferences
 } from "../controllers/calendarController.js";
 import auth from "../middleware/auth.js";
 
@@ -14,6 +15,7 @@ router.get("/auth/callback", oauthCallback);
 // Protected routes (require standard auth middleware)
 router.get("/auth/init", auth, initOAuth);
 router.get("/status", auth, getConnectionStatus);
+router.put("/preferences", auth, updateCalendarPreferences);
 router.post("/sync", auth, syncCalendar);
 router.post("/disconnect", auth, disconnectCalendar);
 

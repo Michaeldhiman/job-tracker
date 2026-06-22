@@ -18,7 +18,7 @@ const KanbanColumn = memo(({ column, jobs, onJobClick, onStatusChange }) => {
   return (
     <div 
       className={clsx(
-        "flex flex-col border w-[calc(100vw-1.5rem)] lg:w-80 rounded-xl flex-shrink-0 h-full overflow-hidden transition-colors duration-200",
+        "flex flex-col border w-full lg:w-80 rounded-xl flex-shrink-0 h-full overflow-hidden transition-colors duration-200",
         isOver ? "bg-primary/5 border-primary/50 border-dashed" : "bg-surface-elevated/50 border-border"
       )}
     >

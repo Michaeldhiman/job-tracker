@@ -84,6 +84,26 @@ export const updateProfile = async (userId, payload) => {
     throw error;
   }
 
+  if (payload.newPassword) {
+    if (!payload.currentPassword) {
+      const error = new Error("Current password is required to change password");
+      error.status = 400;
+      throw error;
+    }
+    const isMatch = await user.comparePassword(payload.currentPassword);
+    if (!isMatch) {
+      const error = new Error("Incorrect current password");
+      error.status = 400;
+      throw error;
+    }
+    if (payload.newPassword.length < 6) {
+      const error = new Error("New password must be at least 6 characters long");
+      error.status = 400;
+      throw error;
+    }
+    user.password = payload.newPassword;
+  }
+
   if (payload.name) user.name = payload.name;
   if (payload.email) {
     // check unique

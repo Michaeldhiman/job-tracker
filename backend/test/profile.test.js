@@ -71,4 +71,54 @@ describe("Profile and Preferences API", () => {
     expect(dbUser.interviewReminders).toBe(false);
     expect(dbUser.theme).toBe("dark");
   });
+
+  it("should fail to change password with incorrect current password", async () => {
+    const res = await request(app)
+      .put("/api/auth/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        currentPassword: "wrongpassword",
+        newPassword: "newpassword123"
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toContain("Incorrect current password");
+  });
+
+  it("should fail to change password with short new password", async () => {
+    const res = await request(app)
+      .put("/api/auth/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        currentPassword: "password123",
+        newPassword: "123"
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toContain("New password must be at least 6 characters long");
+  });
+
+  it("should successfully change password with valid details", async () => {
+    const res = await request(app)
+      .put("/api/auth/profile")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        currentPassword: "password123",
+        newPassword: "newpassword123"
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    // Verify login with new password
+    const loginRes = await request(app)
+      .post("/api/auth/login")
+      .send({
+        email: "profile-test@example.com",
+        password: "newpassword123"
+      });
+
+    expect(loginRes.status).toBe(200);
+    expect(loginRes.body.token).toBeDefined();
+  });
 });

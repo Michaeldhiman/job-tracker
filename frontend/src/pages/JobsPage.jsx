@@ -80,29 +80,31 @@ function JobsPage() {
           <h1 className="text-2xl font-bold tracking-tight text-text">Applications</h1>
           <p className="text-sm text-text-muted mt-1">Manage and track your job applications through the pipeline.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative w-64">
+        <div className="flex flex-col xs:flex-row items-stretch xs:items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 xs:flex-initial xs:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search jobs..."
-              className="pl-9 h-9"
+              className="pl-9 h-9 w-full"
             />
           </div>
-          <Button 
-            variant="secondary" 
-            className={twMerge(
-              "h-9 px-3 transition-all", 
-              (showFilters || filters.status !== 'all' || filters.priority !== 'all' || filters.source !== 'all') && "bg-primary/15 border-primary/40 text-primary hover:bg-primary/25"
-            )}
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="w-4 h-4 mr-2" /> Filter
-          </Button>
-          <Button className="h-9" onClick={() => setShowAddJob(true)}>
-            <Plus className="w-4 h-4 mr-2" /> Add Job
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="secondary" 
+              className={twMerge(
+                "h-9 px-3 transition-all flex-1 xs:flex-initial", 
+                (showFilters || filters.status !== 'all' || filters.priority !== 'all' || filters.source !== 'all') && "bg-primary/15 border-primary/40 text-primary hover:bg-primary/25"
+              )}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <Filter className="w-4 h-4 mr-2" /> Filter
+            </Button>
+            <Button className="h-9 flex-1 xs:flex-initial" onClick={() => setShowAddJob(true)}>
+              <Plus className="w-4 h-4 mr-2" /> Add Job
+            </Button>
+          </div>
         </div>
       </div>
 

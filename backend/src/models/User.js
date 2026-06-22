@@ -55,6 +55,22 @@ const userSchema = new mongoose.Schema(
     calendarConnectionDate: {
       type: Date,
       default: null
+    },
+    calendarAutoCreate: {
+      type: Boolean,
+      default: true
+    },
+    calendarSyncUpdates: {
+      type: Boolean,
+      default: true
+    },
+    calendarSyncCancellations: {
+      type: Boolean,
+      default: true
+    },
+    calendarEnableReminders: {
+      type: Boolean,
+      default: true
     }
   },
   {

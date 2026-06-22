@@ -139,15 +139,16 @@ const formatDateTime = (date, timeString) => {
 /**
  * Creates an event on the user's primary Google Calendar
  */
-export const createGoogleEvent = async (userId, event) => {
+export const createGoogleEvent = async (userId, event, userDoc = null) => {
   const accessToken = await refreshAccessToken(userId);
   
   const startDateTime = formatDateTime(event.date, event.startTime);
   const endDateTime = formatDateTime(event.date, event.endTime);
 
   // Resolve the user's IANA timezone; default to UTC if not set
-  const user = await import("../models/User.js").then(m => m.default.findById(userId).select("timezone"));
+  const user = userDoc || await User.findById(userId).select("timezone calendarEnableReminders");
   const timeZone = user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const enableReminders = user?.calendarEnableReminders !== false;
 
   const googleEventPayload = {
     summary: event.title,
@@ -160,7 +161,10 @@ export const createGoogleEvent = async (userId, event) => {
       dateTime: endDateTime,
       timeZone,
     },
-    reminders: {
+  };
+
+  if (enableReminders) {
+    googleEventPayload.reminders = {
       useDefault: false,
       overrides: [
         { method: "email", minutes: config.googleCalendar.reminderEmailMinutes },
@@ -169,8 +173,10 @@ export const createGoogleEvent = async (userId, event) => {
           minutes: reminderMinutes,
         })),
       ],
-    },
-  };
+    };
+  } else {
+    googleEventPayload.reminders = { useDefault: false, overrides: [] };
+  }
 
   const response = await axios.post(
     "https://www.googleapis.com/calendar/v3/calendars/primary/events",
@@ -189,14 +195,15 @@ export const createGoogleEvent = async (userId, event) => {
 /**
  * Updates an event on the user's primary Google Calendar
  */
-export const updateGoogleEvent = async (userId, googleEventId, event) => {
+export const updateGoogleEvent = async (userId, googleEventId, event, userDoc = null) => {
   const accessToken = await refreshAccessToken(userId);
 
   const startDateTime = formatDateTime(event.date, event.startTime);
   const endDateTime = formatDateTime(event.date, event.endTime);
 
-  const user = await import("../models/User.js").then(m => m.default.findById(userId).select("timezone"));
+  const user = userDoc || await User.findById(userId).select("timezone calendarEnableReminders");
   const timeZone = user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const enableReminders = user?.calendarEnableReminders !== false;
 
   const googleEventPayload = {
     summary: event.title,
@@ -209,7 +216,10 @@ export const updateGoogleEvent = async (userId, googleEventId, event) => {
       dateTime: endDateTime,
       timeZone,
     },
-    reminders: {
+  };
+
+  if (enableReminders) {
+    googleEventPayload.reminders = {
       useDefault: false,
       overrides: [
         { method: "email", minutes: config.googleCalendar.reminderEmailMinutes },
@@ -218,8 +228,10 @@ export const updateGoogleEvent = async (userId, googleEventId, event) => {
           minutes: reminderMinutes,
         })),
       ],
-    },
-  };
+    };
+  } else {
+    googleEventPayload.reminders = { useDefault: false, overrides: [] };
+  }
 
   await axios.put(
     `https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}`,
@@ -282,8 +294,9 @@ export const syncEvents = async (userId) => {
   // 2. Import / Sync Google Calendar events into local db
   for (const gEvt of googleEvents) {
     if (gEvt.status === "cancelled") {
-      // Deletion sync: if cancelled on Google, delete locally
-      await Event.deleteOne({ userId, googleEventId: gEvt.id });
+      if (user.calendarSyncCancellations !== false) {
+        await Event.deleteOne({ userId, googleEventId: gEvt.id });
+      }
       continue;
     }
 
@@ -311,9 +324,10 @@ export const syncEvents = async (userId) => {
     const existingEvent = await Event.findOne({ userId, googleEventId: gEvt.id });
     
     if (existingEvent) {
-      // Update local event if modified
-      Object.assign(existingEvent, eventPayload);
-      await existingEvent.save();
+      if (user.calendarSyncUpdates !== false) {
+        Object.assign(existingEvent, eventPayload);
+        await existingEvent.save();
+      }
     } else {
       // Create new local event matching Google Calendar
       await Event.create({
@@ -337,10 +351,13 @@ export const syncEvents = async (userId) => {
   for (const event of pendingEvents) {
     try {
       if (!event.googleEventId) {
-        const googleEventId = await createGoogleEvent(userId, event);
+        if (user.calendarAutoCreate === false) continue;
+        const googleEventId = await createGoogleEvent(userId, event, user);
         event.googleEventId = googleEventId;
+      } else if (user.calendarSyncUpdates !== false) {
+        await updateGoogleEvent(userId, event.googleEventId, event, user);
       } else {
-        await updateGoogleEvent(userId, event.googleEventId, event);
+        continue;
       }
       event.syncStatus = "synced";
       await event.save();

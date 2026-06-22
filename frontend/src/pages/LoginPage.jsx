@@ -100,7 +100,7 @@ function LoginPage() {
             <Briefcase className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold tracking-tight text-text">
-            Snap<span className="text-primary">Job</span>
+            Snap<span className="text-indigo-400">Job</span>
           </span>
         </Link>
 
@@ -275,7 +275,7 @@ function LoginPage() {
       </div>
 
       {/* RIGHT SIDE: Auth Form */}
-      <div className="col-span-12 lg:col-span-5 flex flex-col justify-center items-center p-6 sm:p-12 xl:p-16 relative bg-background/40">
+      <div className="col-span-12 lg:col-span-5 flex flex-col justify-center items-center p-4 sm:p-12 xl:p-16 relative bg-background/40">
         {/* Glow panel for mobile */}
         <div className="absolute top-[40%] right-[10%] w-[50%] h-[50%] bg-primary/10 blur-[100px] rounded-full pointer-events-none mix-blend-screen lg:hidden" />
 
@@ -287,12 +287,12 @@ function LoginPage() {
               <Briefcase className="w-5.5 h-5.5 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-1.5">
-              Snap<span className="text-primary">Job</span>
+              Snap<span className="text-indigo-400">Job</span>
             </h1>
             <p className="text-zinc-200 text-sm font-semibold">Sign in to track your applications</p>
           </div>
 
-          <div className="bg-[#121214]/65 border border-white/10 backdrop-blur-2xl p-6 sm:p-10 rounded-[2rem] shadow-2xl space-y-7 relative overflow-hidden">
+          <div className="bg-[#121214]/65 border border-white/10 backdrop-blur-2xl p-5 sm:p-10 rounded-2xl sm:rounded-[2rem] shadow-2xl space-y-7 relative overflow-hidden">
             {/* Glow accent inside the card */}
             <div className="absolute top-0 right-0 w-[120px] h-[120px] bg-primary/10 blur-[50px] rounded-full pointer-events-none" />
 

@@ -51,8 +51,10 @@ export const oauthCallback = async (req, res, next) => {
   const { code, state } = req.query;
   const frontendUrl = requireConfig(config.frontendUrl, "FRONTEND_URL");
 
+  const settingsIntegrationsUrl = `${frontendUrl}/settings?tab=integrations`;
+
   if (!code || !state) {
-    return res.redirect(`${frontendUrl}/calendar?status=error&message=missing_auth_code`);
+    return res.redirect(`${settingsIntegrationsUrl}&status=error&message=missing_auth_code`);
   }
 
   try {
@@ -94,11 +96,10 @@ export const oauthCallback = async (req, res, next) => {
     // Run initial synchronization
     await syncEvents(userId);
 
-    // Redirect to the frontend calendar page
-    res.redirect(`${frontendUrl}/calendar?status=success`);
+    res.redirect(`${settingsIntegrationsUrl}&status=success`);
   } catch (error) {
     console.error("Google Calendar Callback Error:", error.message);
-    res.redirect(`${frontendUrl}/calendar?status=error&message=auth_failed`);
+    res.redirect(`${settingsIntegrationsUrl}&status=error&message=auth_failed`);
   }
 };
 
@@ -131,9 +132,9 @@ export const createEvent = async (req, res, next) => {
     });
 
     const user = await User.findById(req.userId);
-    if (user && user.googleCalendarConnected) {
+    if (user?.googleCalendarConnected && user.calendarAutoCreate !== false) {
       try {
-        const googleEventId = await createGoogleEvent(req.userId, event);
+        const googleEventId = await createGoogleEvent(req.userId, event, user);
         event.googleEventId = googleEventId;
         event.syncStatus = "synced";
       } catch (err) {
@@ -181,15 +182,16 @@ export const updateEvent = async (req, res, next) => {
     }
 
     const user = await User.findById(req.userId);
-    if (user && user.googleCalendarConnected) {
+    if (user?.googleCalendarConnected) {
       try {
-        if (event.googleEventId) {
-          await updateGoogleEvent(req.userId, event.googleEventId, event);
-        } else {
-          const googleEventId = await createGoogleEvent(req.userId, event);
+        if (event.googleEventId && user.calendarSyncUpdates !== false) {
+          await updateGoogleEvent(req.userId, event.googleEventId, event, user);
+          event.syncStatus = "synced";
+        } else if (!event.googleEventId && user.calendarAutoCreate !== false) {
+          const googleEventId = await createGoogleEvent(req.userId, event, user);
           event.googleEventId = googleEventId;
+          event.syncStatus = "synced";
         }
-        event.syncStatus = "synced";
       } catch (err) {
         console.error("Failed to sync event update to Google Calendar", err.message);
         event.syncStatus = "failed";
@@ -221,7 +223,7 @@ export const deleteEvent = async (req, res, next) => {
     }
 
     const user = await User.findById(req.userId);
-    if (user && user.googleCalendarConnected && event.googleEventId) {
+    if (user?.googleCalendarConnected && event.googleEventId && user.calendarSyncCancellations !== false) {
       try {
         await deleteGoogleEvent(req.userId, event.googleEventId);
       } catch (err) {
@@ -261,7 +263,7 @@ export const syncCalendar = async (req, res, next) => {
 export const getConnectionStatus = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId).select(
-      "googleCalendarConnected googleCalendarEmail calendarConnectionDate"
+      "googleCalendarConnected googleCalendarEmail calendarConnectionDate calendarAutoCreate calendarSyncUpdates calendarSyncCancellations calendarEnableReminders"
     );
     res.json({ success: true, connection: user });
   } catch (error) {
@@ -284,6 +286,47 @@ export const disconnectCalendar = async (req, res, next) => {
     await GoogleToken.deleteOne({ userId: req.userId });
 
     res.json({ success: true, message: "Google Calendar disconnected successfully." });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const calendarPreferencesSchema = z.object({
+  calendarAutoCreate: z.boolean().optional(),
+  calendarSyncUpdates: z.boolean().optional(),
+  calendarSyncCancellations: z.boolean().optional(),
+  calendarEnableReminders: z.boolean().optional(),
+});
+
+/**
+ * PUT /api/calendar/preferences
+ * Updates Google Calendar sync preference toggles
+ */
+export const updateCalendarPreferences = async (req, res, next) => {
+  try {
+    const data = calendarPreferencesSchema.parse(req.body);
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    if (data.calendarAutoCreate !== undefined) user.calendarAutoCreate = data.calendarAutoCreate;
+    if (data.calendarSyncUpdates !== undefined) user.calendarSyncUpdates = data.calendarSyncUpdates;
+    if (data.calendarSyncCancellations !== undefined) user.calendarSyncCancellations = data.calendarSyncCancellations;
+    if (data.calendarEnableReminders !== undefined) user.calendarEnableReminders = data.calendarEnableReminders;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      preferences: {
+        calendarAutoCreate: user.calendarAutoCreate,
+        calendarSyncUpdates: user.calendarSyncUpdates,
+        calendarSyncCancellations: user.calendarSyncCancellations,
+        calendarEnableReminders: user.calendarEnableReminders,
+      },
+    });
   } catch (error) {
     next(error);
   }
