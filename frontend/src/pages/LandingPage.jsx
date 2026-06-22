@@ -490,12 +490,12 @@ export default function LandingPage() {
       <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-[#09090b]/85 backdrop-blur-xl border-b border-white/[0.06] py-3.5 shadow-2xl' : 'bg-transparent py-5'}`}>
         <div className="container mx-auto px-4 lg:px-6 flex items-center justify-between gap-4">
           <Link to="/" className="flex items-center gap-2.5 z-50 group whitespace-nowrap shrink-0">
-            <div className="w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-primary to-emerald-500 shadow-glass flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-              <Briefcase className="w-4.5 h-4.5 text-white" />
+            <div className="w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-primary to-emerald-500 shadow-glass flex items-center justify-center group-hover:scale-105 transition-transform duration-300 shrink-0">
+              <Briefcase className="w-4.5 h-4.5 text-white shrink-0" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-white flex items-center gap-2 whitespace-nowrap">
+            <span className="text-xl font-bold tracking-tight text-white flex items-center gap-2 whitespace-nowrap shrink-0">
               Snap
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary border border-primary/20 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)] whitespace-nowrap">Job</span>
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-primary border border-primary/20 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)] whitespace-nowrap shrink-0">Job</span>
             </span>
           </Link>
 
@@ -996,7 +996,7 @@ export default function LandingPage() {
 
               {/* Tab Content Canvas */}
               <div className="lg:col-span-8">
-                <Card3DTilt className="rounded-2xl border border-white/10 bg-[#121214]/65 backdrop-blur-2xl shadow-2xl h-[400px] overflow-hidden flex flex-col justify-between">
+                <Card3DTilt className="rounded-2xl border border-white/10 bg-[#121214]/65 backdrop-blur-2xl shadow-2xl h-auto min-h-[380px] md:h-[400px] overflow-hidden flex flex-col justify-between">
                   {/* Browser mockup header */}
                   <div className="h-11 border-b border-white/5 flex items-center justify-between px-5 bg-white/[0.01]">
                     <div className="flex items-center gap-1.5">
@@ -1009,7 +1009,7 @@ export default function LandingPage() {
                   </div>
 
                   {/* Demo area renderer */}
-                  <div className="flex-1 p-6 sm:p-8 bg-[#09090b]/80 relative overflow-hidden flex items-center justify-center">
+                  <div className="flex-1 p-4 sm:p-8 bg-[#09090b]/80 relative overflow-hidden flex items-center justify-center">
                     
                     {/* CONFETTI / PARTICLES OVERLAY */}
                     <AnimatePresence>
@@ -1043,7 +1043,7 @@ export default function LandingPage() {
                               >
                                 <span className="text-[9px] font-bold text-indigo-400">Linear</span>
                                 <p className="text-[11px] font-bold text-white">Product Engineer</p>
-                                <div className="h-4.5 w-14 rounded-full bg-white/5 text-[8px] font-bold text-zinc-400 flex items-center justify-center border border-white/5">Full-time</div>
+                                <div className="h-4.5 w-fit px-2.5 rounded-full bg-white/5 text-[8px] font-bold text-zinc-400 flex items-center justify-center border border-white/5">Full-time</div>
                               </motion.div>
                             )}
                           </div>
@@ -1059,7 +1059,7 @@ export default function LandingPage() {
                               >
                                 <span className="text-[9px] font-bold text-indigo-400">Linear</span>
                                 <p className="text-[11px] font-bold text-white">Product Engineer</p>
-                                <div className="h-4.5 w-14 rounded-full bg-amber-500/10 text-[8px] font-bold text-amber-500 flex items-center justify-center border border-amber-500/20">Resume Screen</div>
+                                <div className="h-4.5 w-fit px-2.5 rounded-full bg-amber-500/10 text-[8px] font-bold text-amber-500 flex items-center justify-center border border-amber-500/20">Resume Screen</div>
                               </motion.div>
                             )}
                           </div>
@@ -1075,7 +1075,7 @@ export default function LandingPage() {
                               >
                                 <span className="text-[9px] font-bold text-emerald-400">Linear</span>
                                 <p className="text-[11px] font-bold text-white">Product Engineer</p>
-                                <div className="h-4.5 w-14 rounded-full bg-emerald-500/10 text-[8px] font-bold text-emerald-400 flex items-center justify-center border border-emerald-500/20 animate-bounce">Technical Screen</div>
+                                <div className="h-4.5 w-fit px-2.5 rounded-full bg-emerald-500/10 text-[8px] font-bold text-emerald-400 flex items-center justify-center border border-emerald-500/20 animate-bounce">Technical Screen</div>
                               </motion.div>
                             )}
                           </div>

@@ -148,6 +148,15 @@ function TopNavbar({ onMenuClick }) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Responsive mobile detector
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleBellClick = () => {
     const next = !showNotifications;
     setShowNotifications(next);
@@ -162,8 +171,10 @@ function TopNavbar({ onMenuClick }) {
     fetchNotifications({ silent: true });
   };
 
+  const visibleNotifications = isMobile ? notifications.slice(0, 5) : notifications;
+
   // Group by date label
-  const grouped = notifications.reduce((acc, log) => {
+  const grouped = visibleNotifications.reduce((acc, log) => {
     const d = new Date(log.createdAt);
     const now = new Date();
     let label;
@@ -182,19 +193,19 @@ function TopNavbar({ onMenuClick }) {
       <div className="flex items-center gap-3 flex-1">
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-3 -ml-3 text-text-muted hover:text-text transition-colors"
+          className="lg:hidden p-3 -ml-3 text-text-muted hover:text-text transition-colors shrink-0"
           aria-label="Open menu"
         >
           <Menu className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="flex items-center gap-2" ref={dropdownRef}>
+      <div className="flex items-center gap-2 shrink-0" ref={dropdownRef}>
         {/* Notification bell */}
         <div className="relative">
           <button
             onClick={handleBellClick}
-            className={`relative p-2 rounded-lg transition-all duration-200 ${
+            className={`relative p-2 rounded-lg transition-all duration-200 shrink-0 ${
               showNotifications
                 ? 'text-text bg-surface-elevated ring-1 ring-border'
                 : 'text-text-muted hover:text-text hover:bg-surface-elevated'
@@ -211,14 +222,15 @@ function TopNavbar({ onMenuClick }) {
 
           {/* ── Notification Panel ────────────────────────── */}
           {showNotifications && (
-            <div
-              className="absolute -right-2 sm:right-0 top-[calc(100%+8px)] w-[calc(100vw-2rem)] max-w-sm sm:max-w-md sm:w-96 rounded-2xl border border-border shadow-2xl overflow-hidden z-50"
-              style={{
-                background: 'rgb(var(--color-surface) / 0.95)',
-                backdropFilter: 'blur(20px)',
-                animation: 'notifSlide 0.2s cubic-bezier(0.16,1,0.3,1)',
-              }}
-            >
+            <div className="fixed md:absolute left-1/2 md:left-auto -translate-x-1/2 md:translate-x-0 md:right-0 top-16 md:top-[calc(100%+8px)] z-50">
+              <div
+                className="w-[min(95vw,420px)] md:w-96 rounded-2xl border border-border shadow-2xl overflow-hidden"
+                style={{
+                  background: 'rgb(var(--color-surface) / 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  animation: 'notifSlide 0.2s cubic-bezier(0.16,1,0.3,1)',
+                }}
+              >
               {/* Header */}
               <div className="px-4 pt-4 pb-3 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -255,7 +267,7 @@ function TopNavbar({ onMenuClick }) {
               </div>
 
               {/* Body */}
-              <div className="max-h-[420px] overflow-y-auto custom-scrollbar">
+              <div className="max-h-[min(420px,60vh)] overflow-y-auto custom-scrollbar">
                 {loading ? (
                   // Skeleton
                   <div className="p-4 space-y-3">
@@ -329,10 +341,10 @@ function TopNavbar({ onMenuClick }) {
               </div>
 
               {/* Footer */}
-              {notifications.length > 0 && (
+              {visibleNotifications.length > 0 && (
                 <div className="border-t border-border px-4 py-2.5 flex items-center justify-between">
                   <span className="text-[11px] text-text-muted">
-                    {notifications.length} recent activit{notifications.length === 1 ? 'y' : 'ies'}
+                    {visibleNotifications.length} recent activit{visibleNotifications.length === 1 ? 'y' : 'ies'}
                   </span>
                   <div className="flex items-center gap-1.5">
                     <span className={`w-1.5 h-1.5 rounded-full ${syncing ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
@@ -340,6 +352,7 @@ function TopNavbar({ onMenuClick }) {
                   </div>
                 </div>
               )}
+              </div>
             </div>
           )}
         </div>
