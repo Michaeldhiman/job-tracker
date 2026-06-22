@@ -424,9 +424,10 @@ export default function LandingPage() {
   const [heroStage, setHeroStage] = useState(0); // 0 = Applied, 1 = Assessment, 2 = Interview, 3 = Offer, 4 = Rejected
 
   useEffect(() => {
-    // Hero simulation loop: Applied -> Assessment -> Interview -> Offer -> Rejected
+    // Hero simulation loop: Applied -> Assessment -> Interview -> Offer (stops, then restarts)
+    // The animated card never enters Rejected — Rejected is a separate static application
     const heroInterval = setInterval(() => {
-      setHeroStage((prev) => (prev + 1) % 5);
+      setHeroStage((prev) => (prev + 1) % 4); // 0=Applied 1=Assessment 2=Interview 3=Offer
     }, 3500);
 
     // Kanban loop
@@ -891,18 +892,6 @@ export default function LandingPage() {
                           <span className="text-[10px] font-bold text-white leading-tight truncate">Frontend Developer</span>
                           <span className="text-[8px] text-zinc-500">No response</span>
                         </div>
-                        {/* Simulated Card in Rejected stage */}
-                        {heroStage === 4 && (
-                          <motion.div 
-                            layoutId="hero-job-card"
-                            className="bg-[#121214] border border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.15)] rounded-lg p-2 flex flex-col gap-1 z-10"
-                            transition={{ type: "spring", stiffness: 100, damping: 13 }}
-                          >
-                            <span className="text-[9px] font-bold text-rose-500">Stripe</span>
-                            <span className="text-[10px] font-bold text-white leading-tight truncate">Frontend Developer</span>
-                            <span className="text-[8px] text-rose-400 font-semibold animate-pulse">Position Closed</span>
-                          </motion.div>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -1097,6 +1086,8 @@ export default function LandingPage() {
                         />
                       )}
                     </AnimatePresence>
+                    {/* key forces remount on tab switch so all animations replay from initial */}
+                    <div key={activeShowcase} className="w-full h-full flex items-center justify-center">
                     {/* DEMO 0: APPLICATION PIPELINE SIMULATOR */}
                     {activeShowcase === 0 && (
                       <div className="w-full h-full flex flex-col gap-4 justify-between">
@@ -1271,6 +1262,8 @@ export default function LandingPage() {
                         </div>
                       </div>
                     )}
+
+                    </div>{/* end key={activeShowcase} remount wrapper */}
 
                   </div>
                 </Card3DTilt>

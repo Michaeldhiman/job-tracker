@@ -13,7 +13,7 @@ router.get("/", async (req, res, next) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.userId);
 
-    const [funnel, trends, timeMetrics, totalResumes, storageResult, mostUsedResult, resumeUsage] = await Promise.all([
+    const [funnel, trends, timeMetrics, totalResumes, storageResult, mostUsedResult, resumeUsage, sourceBreakdown] = await Promise.all([
       // Funnel metrics
       Job.aggregate([
         { $match: { userId } },
@@ -99,6 +99,24 @@ router.get("/", async (req, res, next) => {
           }
         },
         { $sort: { count: -1, name: 1 } }
+      ]),
+      // Source breakdown: total applied vs reached interview vs reached offer per source
+      Job.aggregate([
+        { $match: { userId } },
+        {
+          $group: {
+            _id: "$source",
+            total: { $sum: 1 },
+            interviews: {
+              $sum: { $cond: [{ $in: ["$status", ["Interview", "Offer"]] }, 1, 0] }
+            },
+            offers: {
+              $sum: { $cond: [{ $eq: ["$status", "Offer"] }, 1, 0] }
+            }
+          }
+        },
+        { $match: { _id: { $ne: null } } },
+        { $sort: { total: -1 } }
       ])
     ]);
 
@@ -108,6 +126,17 @@ router.get("/", async (req, res, next) => {
       name: mostUsedResult[0].resume?.name || "Deleted Resume",
       count: mostUsedResult[0].count
     } : null;
+
+    // Compute cumulative stage counts for the bottleneck funnel.
+    // Each stage count = jobs currently at that stage OR any later stage.
+    // This gives true top-of-funnel numbers rather than a snapshot of current statuses.
+    const sm = Object.fromEntries(funnel.map(f => [f._id, f.count]));
+    const stageConversions = [
+      { stage: "Applied",    count: (sm["Applied"] || 0) + (sm["Assessment"] || 0) + (sm["Interview"] || 0) + (sm["Offer"] || 0) + (sm["Rejected"] || 0) },
+      { stage: "Assessment", count: (sm["Assessment"] || 0) + (sm["Interview"] || 0) + (sm["Offer"] || 0) },
+      { stage: "Interview",  count: (sm["Interview"] || 0) + (sm["Offer"] || 0) },
+      { stage: "Offer",      count: sm["Offer"] || 0 }
+    ];
 
     res.json({
       success: true,
@@ -120,7 +149,9 @@ router.get("/", async (req, res, next) => {
           totalStorage,
           mostUsedResume,
           resumeUsage
-        }
+        },
+        sourceBreakdown,
+        stageConversions
       }
     });
   } catch (error) {
