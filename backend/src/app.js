@@ -61,7 +61,6 @@ app.use(morgan("dev"));
 
 import searchRoutes from "./routes/search.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
-import companyRoutes from "./routes/company.routes.js";
 import resumeRoutes from "./routes/resume.routes.js";
 import activityLogRoutes from "./routes/activityLog.routes.js";
 import exportRoutes from "./routes/export.routes.js";
@@ -91,7 +90,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/analytics", analyticsRoutes);
-app.use("/api/companies", companyRoutes);
 app.use("/api/resumes", resumeRoutes);
 app.use("/api/activity-logs", activityLogRoutes);
 app.use("/api/export", exportRoutes);

@@ -9,7 +9,6 @@ import NotFoundPage from './pages/NotFoundPage.jsx';
 import AppLayout from './components/layout/AppLayout.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import CalendarPage from './pages/CalendarPage.jsx';
-import CompaniesPage from './pages/CompaniesPage.jsx';
 import ResumesPage from './pages/ResumesPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import { AppBootstrapLoader } from './components/feedback/Skeletons.jsx';
@@ -79,16 +78,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/companies"
-          element={
-            <ProtectedRoute>
-              <AppLayout>
-                <CompaniesPage />
-              </AppLayout>
-            </ProtectedRoute>
-          }
-        />
+
         <Route
           path="/resumes"
           element={

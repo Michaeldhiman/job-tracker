@@ -1,14 +1,12 @@
 import { ZipArchive } from 'archiver';
 import axios from 'axios';
 import Job from '../models/Job.js';
-import Company from '../models/Company.js';
 import Resume from '../models/Resume.js';
 
 export const exportAllData = async (req, res, next) => {
   try {
-    const [jobs, companies, resumes] = await Promise.all([
+    const [jobs, resumes] = await Promise.all([
       Job.find({ userId: req.userId }).lean(),
-      Company.find({ userId: req.userId }).lean(),
       Resume.find({ userId: req.userId }).lean()
     ]);
 

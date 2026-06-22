@@ -17,17 +17,15 @@ function DashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const [analyticsRes, techRes, hrRes, screenRes, recentRes] = await Promise.all([
+      const [analyticsRes, interviewJobsRes, assessmentJobsRes, recentRes] = await Promise.all([
         getAnalytics(),
-        searchJobs({ status: 'Technical', limit: 5 }),
-        searchJobs({ status: 'HR', limit: 5 }),
-        searchJobs({ status: 'Screening', limit: 5 }),
+        searchJobs({ status: 'Interview', limit: 5 }),
+        searchJobs({ status: 'Assessment', limit: 5 }),
         searchJobs({ limit: 5 })
       ]);
       const interviewsRes = [
-        ...(techRes?.results || []),
-        ...(hrRes?.results || []),
-        ...(screenRes?.results || [])
+        ...(interviewJobsRes?.results || []),
+        ...(assessmentJobsRes?.results || [])
       ].sort((a, b) => new Date(b.interviewDate || b.appliedDate) - new Date(a.interviewDate || a.appliedDate)).slice(0, 5);
       
       if (analyticsRes.success) {
@@ -76,7 +74,7 @@ function DashboardPage() {
   // Calculate totals from funnel data
   const totalApplications = data.funnel.reduce((acc, curr) => acc + curr.count, 0);
   const offers = data.funnel.find(f => f._id === 'Offer')?.count || 0;
-  const interviewStages = ['Screening', 'Technical', 'HR'];
+  const interviewStages = ['Interview', 'Assessment'];
   const interviewsCount = data.funnel
     .filter(f => interviewStages.includes(f._id))
     .reduce((acc, curr) => acc + curr.count, 0);

@@ -11,13 +11,11 @@ import { deleteJob } from '../../api/jobsApi.js';
 
 // ─── Job status badge config ───────────────────────────────────────────────
 const JOB_STATUS_STYLES = {
-  applied:     'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  screening:   'bg-purple-500/10 text-purple-400 border-purple-500/20',
-  interview:   'bg-primary/10 text-primary border-primary/20',
-  offer:       'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  rejected:    'bg-rose-500/10 text-rose-400 border-rose-500/20',
-  withdrawn:   'bg-gray-500/10 text-gray-400 border-gray-500/20',
-  accepted:    'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  Applied:     'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  Assessment:  'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  Interview:   'bg-primary/10 text-primary border-primary/20',
+  Offer:       'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  Rejected:    'bg-rose-500/10 text-rose-400 border-rose-500/20',
 };
 
 // ─── Event type badge config ───────────────────────────────────────────────

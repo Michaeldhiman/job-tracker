@@ -135,34 +135,6 @@ export function KanbanSkeleton() {
   );
 }
 
-// ─── Companies ────────────────────────────────────────────────────────────────
-
-export function CompanyCardSkeleton() {
-  return (
-    <div className="rounded-xl border border-border bg-surface/50 p-5 space-y-4">
-      <div className="flex items-start gap-3">
-        <Skeleton className="w-10 h-10 rounded-lg shrink-0" />
-        <div className="flex-1 space-y-1.5">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-3 w-16" />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-3/4" />
-      </div>
-    </div>
-  );
-}
-
-export function CompaniesGridSkeleton({ count = 9 }) {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {[...Array(count)].map((_, i) => <CompanyCardSkeleton key={i} />)}
-    </div>
-  );
-}
-
 // ─── Resumes ─────────────────────────────────────────────────────────────────
 
 export function ResumeCardSkeleton() {

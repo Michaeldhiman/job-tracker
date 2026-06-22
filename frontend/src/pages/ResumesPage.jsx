@@ -362,7 +362,7 @@ function ResumesPage() {
               resumes.map(resume => {
                 const isEditing = editingId === resume._id;
                 
-                // Calculate response rate (OA, Screening, Technical, HR, Offer)
+                // Calculate response rate (Assessment, Interview, Offer)
                 const totalApps = resume.usageCount || 0;
                 const successfulApps = resume.applications?.filter(app => 
                   ["Assessment", "Interview", "Offer"].includes(app.status)

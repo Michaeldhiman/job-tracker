@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Briefcase, Building2, MapPin, IndianRupee, Calendar, Link as LinkIcon, User, Mail, Tag, AlignLeft, AlertCircle, Plus, FileText, Check, ChevronDown } from 'lucide-react';
-import { createJob, updateJob, getCompanies, getResumes, uploadResumeDirect } from '../../api/jobsApi.js';
+import { createJob, updateJob, getResumes, uploadResumeDirect } from '../../api/jobsApi.js';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../ui/Card.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 
@@ -30,7 +30,7 @@ const jobSchema = z.object({
 export default function AddJobModal({ isOpen, onClose, onSuccess, jobToEdit = null }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [companies, setCompanies] = useState([]);
+
   const [resumes, setResumes] = useState([]);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
   const inlineResumeInputRef = useRef(null);
@@ -52,10 +52,7 @@ export default function AddJobModal({ isOpen, onClose, onSuccess, jobToEdit = nu
 
   useEffect(() => {
     if (isOpen) {
-      // Load companies
-      getCompanies({ limit: 100 })
-        .then(res => setCompanies(res.companies || []))
-        .catch(console.error);
+
 
       // Load resumes
       getResumes({ limit: 100 })
@@ -222,14 +219,10 @@ export default function AddJobModal({ isOpen, onClose, onSuccess, jobToEdit = nu
                         <div className="relative">
                           <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
                           <input 
-                            list="companies-list"
                             {...register("company")}
                             placeholder="e.g. Google"
                             className={`w-full bg-background border ${errors.company ? 'border-rose-500' : 'border-border'} rounded-lg pl-9 pr-4 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all`}
                           />
-                          <datalist id="companies-list">
-                            {companies.map(c => <option key={c._id} value={c.name} />)}
-                          </datalist>
                         </div>
                         {errors.company && <p className="text-xs text-rose-500">{errors.company.message}</p>}
                       </div>

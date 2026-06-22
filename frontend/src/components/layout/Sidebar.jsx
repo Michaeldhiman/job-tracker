@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { path: '/analytics', label: 'Analytics', icon: LineChart },
   { path: '/calendar', label: 'Interviews', icon: Calendar },
   { path: '/resumes', label: 'Resume Library', icon: FileText },
-  { path: '/companies', label: 'Company CRM', icon: Building2 },
 ];
 
 const navLinkClass = ({ isActive }) =>

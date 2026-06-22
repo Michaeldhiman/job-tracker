@@ -410,23 +410,23 @@ export default function LandingPage() {
   );
 
   const showcaseTabs = [
-    { id: 0, title: "Kanban Pipeline", icon: LayoutDashboard },
-    { id: 1, title: "Analytics Engine", icon: LineChart },
-    { id: 2, title: "Resume Vault", icon: FileText },
-    { id: 3, title: "Calendar Scheduler", icon: Calendar },
+    { id: 0, title: "Application Pipeline", icon: LayoutDashboard },
+    { id: 1, title: "Interview Tracking", icon: Clock },
+    { id: 2, title: "Calendar Integration", icon: Calendar },
+    { id: 3, title: "Analytics Dashboard", icon: LineChart },
   ];
 
   // Showcase Demos State Animation Trigger Loops
-  const [kanbanStage, setKanbanStage] = useState(0); // 0 = Applied, 1 = Screening, 2 = Interview
+  const [kanbanStage, setKanbanStage] = useState(0); // 0 = Applied, 1 = Assessment, 2 = Interview
   const [resumeUploadProgress, setResumeUploadProgress] = useState(0);
   const [calendarSecondsLeft, setCalendarSecondsLeft] = useState(10);
   const [calendarShowAlert, setCalendarShowAlert] = useState(false);
-  const [heroStage, setHeroStage] = useState(0); // 0 = Applied, 1 = Screening, 2 = Interview, 3 = Offer
+  const [heroStage, setHeroStage] = useState(0); // 0 = Applied, 1 = Assessment, 2 = Interview, 3 = Offer, 4 = Rejected
 
   useEffect(() => {
-    // Hero simulation loop: Applied -> Screening -> Interview -> Offer
+    // Hero simulation loop: Applied -> Assessment -> Interview -> Offer -> Rejected
     const heroInterval = setInterval(() => {
-      setHeroStage((prev) => (prev + 1) % 4);
+      setHeroStage((prev) => (prev + 1) % 5);
     }, 3500);
 
     // Kanban loop
@@ -501,10 +501,10 @@ export default function LandingPage() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-x-4 lg:gap-x-8 text-sm font-medium text-zinc-400 shrink-0">
-            <a href="#problems" className="hover:text-white transition-colors whitespace-nowrap">How It Works</a>
-            <a href="#showcase" className="hover:text-white transition-colors whitespace-nowrap">Features</a>
-            <a href="#compare" className="hover:text-white transition-colors whitespace-nowrap">Excel vs Snap Job</a>
-            <a href="#faq" className="hover:text-white transition-colors whitespace-nowrap">FAQ</a>
+            <a href="#showcase" className="hover:text-white transition-colors whitespace-nowrap">Applications</a>
+            <a href="#analytics" className="hover:text-white transition-colors whitespace-nowrap">Analytics</a>
+            <a href="#showcase" className="hover:text-white transition-colors whitespace-nowrap">Calendar</a>
+            <a href="#faq" className="hover:text-white transition-colors whitespace-nowrap">Pricing</a>
           </nav>
 
           <div className="hidden md:flex items-center gap-x-2 lg:gap-x-4 shrink-0">
@@ -545,10 +545,10 @@ export default function LandingPage() {
               className="absolute top-full left-0 right-0 bg-[#09090b] border-b border-white/[0.06] shadow-2xl md:hidden overflow-hidden"
             >
               <div className="p-6 flex flex-col gap-4">
-                <a href="#problems" className="text-sm font-medium text-zinc-300 py-2" onClick={() => setMobileMenuOpen(false)}>How It Works</a>
-                <a href="#showcase" className="text-sm font-medium text-zinc-300 py-2" onClick={() => setMobileMenuOpen(false)}>Features</a>
-                <a href="#compare" className="text-sm font-medium text-zinc-300 py-2" onClick={() => setMobileMenuOpen(false)}>Excel vs Snap Job</a>
-                <a href="#faq" className="text-sm font-medium text-zinc-300 py-2" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
+                <a href="#showcase" className="text-sm font-medium text-zinc-300 py-2" onClick={() => setMobileMenuOpen(false)}>Applications</a>
+                <a href="#analytics" className="text-sm font-medium text-zinc-300 py-2" onClick={() => setMobileMenuOpen(false)}>Analytics</a>
+                <a href="#showcase" className="text-sm font-medium text-zinc-300 py-2" onClick={() => setMobileMenuOpen(false)}>Calendar</a>
+                <a href="#faq" className="text-sm font-medium text-zinc-300 py-2" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
                 <div className="h-px bg-white/5 my-2" />
                 {isAuthenticated ? (
                   <Link to="/dashboard" className="w-full py-3 rounded-xl bg-primary text-center font-bold text-white shadow-lg" onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
@@ -580,7 +580,7 @@ export default function LandingPage() {
                 className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] sm:text-xs font-bold text-indigo-400 uppercase tracking-wider sm:tracking-widest mb-3 md:mb-5"
               >
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                Next-Gen Job Application CRM
+                Job Search Tracking Workspace
               </motion.div>
 
               {/* Massive Header */}
@@ -590,8 +590,8 @@ export default function LandingPage() {
                 transition={{ duration: 0.7, delay: 0.1 }}
                 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold tracking-tight text-white leading-[1.1] mb-3 md:mb-5"
               >
-                Turn Your Job Search <br className="hidden md:inline" />
-                Into an <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-400 to-emerald-500">Automated Funnel.</span>
+                Track Every Job Application <br className="hidden md:inline" />
+                From <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-400 to-emerald-500">Applied to Offer.</span>
               </motion.h1>
 
               {/* Sleek Subtitle */}
@@ -601,7 +601,7 @@ export default function LandingPage() {
                 transition={{ duration: 0.7, delay: 0.2 }}
                 className="text-base sm:text-lg md:text-xl text-zinc-400 mb-4 md:mb-6 max-w-2.5xl mx-auto leading-relaxed"
               >
-                Ditch messy spreadsheets. Organize applications, track interviews, and analyze your conversion rates in one visual, automated pipeline.
+                A clean, visual workspace designed to organize your job search. Ditch messy spreadsheets for centralized tracking, automated interview scheduling, and insights that show you what's actually working.
               </motion.p>
 
               {/* CTAs & Trust Social Proof */}
@@ -618,7 +618,7 @@ export default function LandingPage() {
                     </Link>
                   </MagneticButton>
                   <MagneticButton className="w-full sm:w-auto">
-                    <a href="#problems" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-base transition-all backdrop-blur-md">
+                    <a href="#showcase" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-base transition-all backdrop-blur-md">
                       See How It Works
                     </a>
                   </MagneticButton>
@@ -638,6 +638,48 @@ export default function LandingPage() {
                   <span className="leading-normal">Empowering 10,000+ candidates landing offers at top startups.</span>
                 </motion.div>
               </div>
+
+              {/* Solution USP Highlights */}
+              <motion.div 
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.4 }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mt-12 text-left"
+              >
+                {[
+                  {
+                    title: "Centralized Workspace",
+                    desc: "No more messy spreadsheet rows. Store roles, companies, salary ranges, deadlines, and tailored resumes in one organized hub.",
+                    icon: Briefcase,
+                    color: "text-indigo-400"
+                  },
+                  {
+                    title: "Interview Organization",
+                    desc: "Track rounds, store prep notes, and record feedback. Sync your calendar to stay on top of upcoming technical and behavioral interviews.",
+                    icon: Calendar,
+                    color: "text-purple-400"
+                  },
+                  {
+                    title: "Funnel Analytics",
+                    desc: "Identify exactly where you drop off—whether it's response rates, assessment screens, or final rounds—so you know how to optimize.",
+                    icon: LineChart,
+                    color: "text-emerald-400"
+                  }
+                ].map((usp, i) => {
+                  const Icon = usp.icon;
+                  return (
+                    <div key={i} className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 backdrop-blur-md">
+                      <div className="flex items-center gap-3 mb-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                          <Icon className={`w-4 h-4 ${usp.color}`} />
+                        </div>
+                        <h3 className="font-bold text-sm text-white">{usp.title}</h3>
+                      </div>
+                      <p className="text-xs text-zinc-400 leading-relaxed">{usp.desc}</p>
+                    </div>
+                  );
+                })}
+              </motion.div>
             </div>
 
             {/* Hero Interactive 3D Mockup Container */}
@@ -669,7 +711,7 @@ export default function LandingPage() {
                   {/* Left Sidebar mockup */}
                   <div className="col-span-3 border-r border-white/5 p-2 hidden md:flex flex-col gap-3.5">
                     <div className="h-7 w-36 bg-white/5 rounded-lg border border-white/5 mb-3" />
-                    {['Board Pipeline', 'Analytics Funnel', 'Interview Calendar', 'Resume Matching', 'Company Contacts', 'Preferences'].map((tab, i) => (
+                    {['Applications Board', 'Analytics Dashboard', 'Interview Calendar', 'Resume Vault', 'Preferences'].map((tab, i) => (
                       <div key={i} className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold ${i === 0 ? 'bg-primary/10 text-indigo-400 border border-primary/20' : 'text-zinc-500 hover:text-zinc-300'}`}>
                         <div className="w-3.5 h-3.5 rounded bg-white/5" />
                         {tab}
@@ -722,19 +764,20 @@ export default function LandingPage() {
                     </div>
 
                     {/* Central columns grid mockup */}
-                    <div className="flex-1 grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                    <div className="flex-1 grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3.5">
                       {/* Column 1: Applied */}
-                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 flex flex-col gap-2 relative">
+                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 flex flex-col gap-2 relative min-w-0">
                         <div className="flex justify-between text-[10px] font-bold text-zinc-400 border-b border-white/5 pb-1">
                           <span>Applied</span>
                           <span className="px-1 bg-white/5 rounded text-[9px] text-zinc-500">
-                            {heroStage >= 1 ? '1' : '2'}
+                            {heroStage === 0 ? '2' : '1'}
                           </span>
                         </div>
                         {/* Static card */}
                         <div className="bg-white/[0.02] border border-white/5 rounded-lg p-2 flex flex-col gap-1">
-                          <span className="text-[9px] font-bold text-indigo-400">Linear</span>
-                          <span className="text-[11px] font-bold text-white leading-tight">Product Engineer</span>
+                          <span className="text-[9px] font-bold text-indigo-400">Google</span>
+                          <span className="text-[10px] font-bold text-white leading-tight truncate">Software Engineer</span>
+                          <span className="text-[8px] text-zinc-500">Applied June 18</span>
                         </div>
                         {/* Simulated Card in Applied stage */}
                         {heroStage === 0 && (
@@ -744,44 +787,53 @@ export default function LandingPage() {
                             transition={{ type: "spring", stiffness: 100, damping: 13 }}
                           >
                             <span className="text-[9px] font-bold text-primary">Stripe</span>
-                            <span className="text-[11px] font-bold text-white leading-tight animate-pulse">Frontend Developer</span>
-                            <span className="text-[8px] text-zinc-500">Applied June 11</span>
+                            <span className="text-[10px] font-bold text-white leading-tight truncate animate-pulse">Frontend Developer</span>
+                            <span className="text-[8px] text-zinc-500">Applied June 20</span>
                           </motion.div>
                         )}
                       </div>
 
-                      {/* Column 2: Screening */}
-                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 flex flex-col gap-2 relative">
+                      {/* Column 2: Assessment */}
+                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 flex flex-col gap-2 relative min-w-0">
                         <div className="flex justify-between text-[10px] font-bold text-zinc-400 border-b border-white/5 pb-1">
-                          <span>Screening</span>
+                          <span>Assessment</span>
                           <span className="px-1 bg-white/5 rounded text-[9px] text-zinc-500">
-                            {heroStage === 1 ? '1' : '0'}
+                            {heroStage === 1 ? '2' : '1'}
                           </span>
                         </div>
-                        {/* Simulated Card in Screening stage */}
+                        {/* Static card */}
+                        <div className="bg-white/[0.02] border border-white/5 rounded-lg p-2 flex flex-col gap-1">
+                          <span className="text-[9px] font-bold text-amber-500">Amazon</span>
+                          <span className="text-[10px] font-bold text-white leading-tight truncate">SDE Intern</span>
+                          <span className="text-[8px] text-zinc-500">OA Received</span>
+                        </div>
+                        {/* Simulated Card in Assessment stage */}
                         {heroStage === 1 && (
                           <motion.div 
                             layoutId="hero-job-card"
                             className="bg-[#121214] border border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.15)] rounded-lg p-2 flex flex-col gap-1 z-10"
                             transition={{ type: "spring", stiffness: 100, damping: 13 }}
                           >
-                            <div className="flex justify-between items-center">
-                              <span className="text-[9px] font-bold text-amber-500">Stripe</span>
-                              <span className="text-[8px] bg-amber-500/10 text-amber-500 px-1 py-0.5 rounded font-bold animate-pulse">Screening</span>
-                            </div>
-                            <span className="text-[11px] font-bold text-white leading-tight">Frontend Developer</span>
-                            <span className="text-[8px] text-zinc-400">Resume parsed</span>
+                            <span className="text-[9px] font-bold text-amber-500">Stripe</span>
+                            <span className="text-[10px] font-bold text-white leading-tight truncate">Frontend Developer</span>
+                            <span className="text-[8px] text-zinc-400 animate-pulse">HackerRank OA</span>
                           </motion.div>
                         )}
                       </div>
 
-                      {/* Column 3: Interviewing */}
-                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 flex flex-col gap-2 relative">
+                      {/* Column 3: Interview */}
+                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 flex flex-col gap-2 relative min-w-0">
                         <div className="flex justify-between text-[10px] font-bold text-zinc-400 border-b border-white/5 pb-1">
-                          <span>Interviewing</span>
+                          <span>Interview</span>
                           <span className="px-1 bg-white/5 rounded text-[9px] text-zinc-500">
-                            {heroStage === 2 ? '1' : '0'}
+                            {heroStage === 2 ? '2' : '1'}
                           </span>
+                        </div>
+                        {/* Static card */}
+                        <div className="bg-white/[0.02] border border-white/5 rounded-lg p-2 flex flex-col gap-1">
+                          <span className="text-[9px] font-bold text-purple-400">Atlassian</span>
+                          <span className="text-[10px] font-bold text-white leading-tight truncate">Backend Engineer</span>
+                          <span className="text-[8px] text-zinc-500">Today 4:30 PM</span>
                         </div>
                         {/* Simulated Card in Interview stage */}
                         {heroStage === 2 && (
@@ -790,20 +842,17 @@ export default function LandingPage() {
                             className="bg-[#121214] border border-purple-500/30 shadow-[0_0_12px_rgba(168,85,247,0.15)] rounded-lg p-2 flex flex-col gap-1 z-10"
                             transition={{ type: "spring", stiffness: 100, damping: 13 }}
                           >
-                            <div className="flex justify-between items-center">
-                              <span className="text-[9px] font-bold text-purple-400">Stripe</span>
-                              <span className="text-[8px] bg-purple-500/10 text-purple-400 px-1 py-0.5 rounded font-bold animate-pulse">Technical</span>
-                            </div>
-                            <span className="text-[11px] font-bold text-white leading-tight">Frontend Developer</span>
-                            <span className="text-[8px] text-zinc-300">Today at 4:30 PM</span>
+                            <span className="text-[9px] font-bold text-purple-400">Stripe</span>
+                            <span className="text-[10px] font-bold text-white leading-tight truncate">Frontend Developer</span>
+                            <span className="text-[8px] text-zinc-300 animate-pulse">Technical Screen</span>
                           </motion.div>
                         )}
                       </div>
 
-                      {/* Column 4: Offers */}
-                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 flex flex-col gap-2 relative">
+                      {/* Column 4: Offer */}
+                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 flex flex-col gap-2 relative min-w-0">
                         <div className="flex justify-between text-[10px] font-bold text-zinc-400 border-b border-white/5 pb-1">
-                          <span>Offers</span>
+                          <span>Offer</span>
                           <span className="px-1 bg-white/5 rounded text-[9px] text-zinc-500">
                             {heroStage === 3 ? '2' : '1'}
                           </span>
@@ -811,7 +860,8 @@ export default function LandingPage() {
                         {/* Static card */}
                         <div className="bg-white/[0.02] border border-white/5 rounded-lg p-2 flex flex-col gap-1">
                           <span className="text-[9px] font-bold text-emerald-400">Vercel</span>
-                          <span className="text-[11px] font-bold text-white leading-tight">Solutions Engineer</span>
+                          <span className="text-[10px] font-bold text-white leading-tight truncate">Solutions Engineer</span>
+                          <span className="text-[8px] text-emerald-400 font-bold">$140k + Equity</span>
                         </div>
                         {/* Simulated Card in Offer stage */}
                         {heroStage === 3 && (
@@ -820,12 +870,37 @@ export default function LandingPage() {
                             className="bg-[#121214] border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.25)] rounded-lg p-2 flex flex-col gap-1 z-10"
                             transition={{ type: "spring", stiffness: 100, damping: 13 }}
                           >
-                            <div className="flex justify-between items-center">
-                              <span className="text-[9px] font-bold text-emerald-400">Stripe</span>
-                              <span className="text-[8px] bg-emerald-500/10 text-emerald-400 px-1 py-0.5 rounded font-bold animate-bounce">Offer</span>
-                            </div>
-                            <span className="text-[11px] font-bold text-white leading-tight">Frontend Developer</span>
-                            <span className="text-[8px] text-emerald-400 font-bold">$140k + Equity</span>
+                            <span className="text-[9px] font-bold text-emerald-400">Stripe</span>
+                            <span className="text-[10px] font-bold text-white leading-tight truncate animate-bounce">Frontend Developer</span>
+                            <span className="text-[8px] text-emerald-400 font-bold">$135k + Equity</span>
+                          </motion.div>
+                        )}
+                      </div>
+
+                      {/* Column 5: Rejected */}
+                      <div className="bg-white/[0.01] border border-white/5 rounded-xl p-2.5 flex flex-col gap-2 relative min-w-0">
+                        <div className="flex justify-between text-[10px] font-bold text-zinc-400 border-b border-white/5 pb-1">
+                          <span>Rejected</span>
+                          <span className="px-1 bg-white/5 rounded text-[9px] text-zinc-500">
+                            {heroStage === 4 ? '2' : '1'}
+                          </span>
+                        </div>
+                        {/* Static card */}
+                        <div className="bg-white/[0.02] border border-white/5 rounded-lg p-2 flex flex-col gap-1">
+                          <span className="text-[9px] font-bold text-rose-500">Adobe</span>
+                          <span className="text-[10px] font-bold text-white leading-tight truncate">Frontend Developer</span>
+                          <span className="text-[8px] text-zinc-500">No response</span>
+                        </div>
+                        {/* Simulated Card in Rejected stage */}
+                        {heroStage === 4 && (
+                          <motion.div 
+                            layoutId="hero-job-card"
+                            className="bg-[#121214] border border-rose-500/30 shadow-[0_0_12px_rgba(244,63,94,0.15)] rounded-lg p-2 flex flex-col gap-1 z-10"
+                            transition={{ type: "spring", stiffness: 100, damping: 13 }}
+                          >
+                            <span className="text-[9px] font-bold text-rose-500">Stripe</span>
+                            <span className="text-[10px] font-bold text-white leading-tight truncate">Frontend Developer</span>
+                            <span className="text-[8px] text-rose-400 font-semibold animate-pulse">Position Closed</span>
                           </motion.div>
                         )}
                       </div>
@@ -1022,12 +1097,11 @@ export default function LandingPage() {
                         />
                       )}
                     </AnimatePresence>
-
-                    {/* DEMO 0: KANBAN FLOW SIMULATOR */}
+                    {/* DEMO 0: APPLICATION PIPELINE SIMULATOR */}
                     {activeShowcase === 0 && (
                       <div className="w-full h-full flex flex-col gap-4 justify-between">
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Drag & Drop Simulation</span>
+                          <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Drag & Drop Pipeline</span>
                           <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-primary/20 animate-pulse">Running Automator</span>
                         </div>
                         
@@ -1048,9 +1122,9 @@ export default function LandingPage() {
                             )}
                           </div>
 
-                          {/* Column 2: Screening */}
+                          {/* Column 2: Assessment */}
                           <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3 flex flex-col gap-3 relative">
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase pb-1.5 border-b border-white/5">Screening</span>
+                            <span className="text-[10px] font-bold text-zinc-500 uppercase pb-1.5 border-b border-white/5">Assessment</span>
                             {kanbanStage === 1 && (
                               <motion.div 
                                 layoutId="kanban-demo-card" 
@@ -1064,7 +1138,7 @@ export default function LandingPage() {
                             )}
                           </div>
 
-                          {/* Column 3: Interviewing */}
+                          {/* Column 3: Interview */}
                           <div className="bg-white/[0.01] border border-white/5 rounded-xl p-3 flex flex-col gap-3 relative">
                             <span className="text-[10px] font-bold text-zinc-500 uppercase pb-1.5 border-b border-white/5">Interview</span>
                             {kanbanStage === 2 && (
@@ -1083,79 +1157,37 @@ export default function LandingPage() {
                       </div>
                     )}
 
-                    {/* DEMO 1: ANALYTICS FUNNEL SIMULATOR */}
+                    {/* DEMO 1: INTERVIEW TRACKING SIMULATOR */}
                     {activeShowcase === 1 && (
                       <div className="w-full h-full flex flex-col justify-between gap-4">
                         <div className="flex justify-between items-center">
-                          <div>
-                            <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Funnel Analytics</span>
-                            <h5 className="text-sm font-bold text-white mt-0.5">Average Conversion: <span className="text-emerald-400">32.4%</span></h5>
-                          </div>
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+14% Growth</span>
+                          <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Interview Round Logger</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">Google - Software Engineer</span>
                         </div>
-
-                        {/* Interactive Bars visual */}
-                        <div className="flex-1 flex items-end justify-around gap-2 sm:gap-6 pt-6 border-b border-white/5 pb-2">
+                        
+                        <div className="flex-1 flex flex-col gap-3 py-2 justify-center">
                           {[
-                            { label: 'Applications', rate: '100%', height: '100%', color: 'from-indigo-600 to-indigo-500' },
-                            { label: 'Screenings', rate: '52%', height: '52%', color: 'from-indigo-500 to-indigo-400' },
-                            { label: 'Interviews', rate: '32%', height: '32%', color: 'from-indigo-400 to-purple-500' },
-                            { label: 'Offers', rate: '12%', height: '12%', color: 'from-emerald-500 to-teal-400' }
-                          ].map((bar, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                              <motion.div 
-                                initial={{ height: 0 }}
-                                animate={{ height: bar.height }}
-                                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                                className={`w-full max-w-[50px] bg-gradient-to-t ${bar.color} rounded-t-lg shadow-lg relative group`}
-                              >
-                                <span className="absolute top-[-24px] inset-x-0 text-center text-[10px] font-bold text-white">{bar.rate}</span>
-                              </motion.div>
-                              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider text-center">{bar.label}</span>
+                            { round: "Technical Coding", status: "Completed", date: "June 15", notes: "Solved 2 graph problems. Positive coding speed feedback.", color: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5" },
+                            { round: "System Design", status: "Scheduled", date: "Tomorrow 2:00 PM", notes: "Review sharding, message queues, and caching.", color: "text-amber-400 border-amber-500/20 bg-amber-500/5 animate-pulse" },
+                            { round: "Behavioral & Fit", status: "Pending", date: "TBD", notes: "Awaiting system design outcomes.", color: "text-zinc-500 border-white/5 bg-white/[0.01]" }
+                          ].map((item, index) => (
+                            <div key={index} className={`border rounded-xl p-3 flex justify-between items-start gap-4 ${item.color}`}>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h6 className="text-xs font-bold text-white">{item.round}</h6>
+                                  <span className="text-[8px] px-1.5 py-0.5 rounded-full border bg-black/40 font-bold">{item.status}</span>
+                                </div>
+                                <p className="text-[10px] text-zinc-400 truncate">{item.notes}</p>
+                              </div>
+                              <span className="text-[9px] font-mono font-bold text-zinc-500 shrink-0">{item.date}</span>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    {/* DEMO 2: RESUME VAULT SIMULATOR */}
+                    {/* DEMO 2: CALENDAR INTEGRATION SIMULATOR */}
                     {activeShowcase === 2 && (
-                      <div className="w-full h-full flex flex-col justify-between gap-4">
-                        <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Resume Version Matcher</span>
-                        
-                        <div className="flex-1 flex flex-col items-center justify-center gap-4 border border-dashed border-white/10 rounded-xl p-6 relative bg-white/[0.01]">
-                          {resumeUploadProgress < 100 ? (
-                            <>
-                              <Upload className="w-8 h-8 text-indigo-400 animate-bounce" />
-                              <div className="w-full max-w-[240px] bg-white/5 rounded-full h-2 overflow-hidden border border-white/5">
-                                <motion.div 
-                                  className="bg-primary h-full"
-                                  style={{ width: `${resumeUploadProgress}%` }}
-                                />
-                              </div>
-                              <span className="text-xs font-mono text-zinc-400">Uploading: Resume_SWE_Google.pdf ({resumeUploadProgress}%)</span>
-                            </>
-                          ) : (
-                            <motion.div 
-                              initial={{ scale: 0.9, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              className="flex flex-col items-center gap-3 text-center"
-                            >
-                              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                                <Check className="w-6 h-6" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-white">Resume_SWE_Google.pdf uploaded!</p>
-                                <span className="text-[10px] text-zinc-500">Auto-linked to Google application - Version v2_google</span>
-                              </div>
-                            </motion.div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* DEMO 3: CALENDAR & REMINDERS SIMULATOR */}
-                    {activeShowcase === 3 && (
                       <div className="w-full h-full flex flex-col justify-between gap-4">
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Calendar Sync</span>
@@ -1174,7 +1206,7 @@ export default function LandingPage() {
                               >
                                 <Clock className="w-7 h-7 text-amber-500 mx-auto" />
                                 <h6 className="text-xs font-bold text-zinc-400">Awaiting recruiter response...</h6>
-                                <p className="text-[11px] text-zinc-600">Simulating real-time schedule trigger from external system.</p>
+                                <p className="text-[11px] text-zinc-600">Simulating real-time schedule trigger from external calendar.</p>
                               </motion.div>
                             ) : (
                               <motion.div 
@@ -1201,6 +1233,41 @@ export default function LandingPage() {
                               </motion.div>
                             )}
                           </AnimatePresence>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* DEMO 3: ANALYTICS DASHBOARD SIMULATOR */}
+                    {activeShowcase === 3 && (
+                      <div className="w-full h-full flex flex-col justify-between gap-4">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="text-xs text-zinc-500 font-bold uppercase tracking-widest">Funnel Analytics</span>
+                            <h5 className="text-sm font-bold text-white mt-0.5">Average Conversion: <span className="text-emerald-400">32.4%</span></h5>
+                          </div>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+14% Growth</span>
+                        </div>
+
+                        {/* Interactive Bars visual */}
+                        <div className="flex-1 flex items-end justify-around gap-2 sm:gap-6 pt-6 border-b border-white/5 pb-2">
+                          {[
+                            { label: 'Applications', rate: '100%', height: '100%', color: 'from-indigo-600 to-indigo-500' },
+                            { label: 'Assessments', rate: '52%', height: '52%', color: 'from-indigo-500 to-indigo-400' },
+                            { label: 'Interviews', rate: '32%', height: '32%', color: 'from-indigo-400 to-purple-500' },
+                            { label: 'Offers', rate: '12%', height: '12%', color: 'from-emerald-500 to-teal-400' }
+                          ].map((bar, i) => (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
+                              <motion.div 
+                                initial={{ height: 0 }}
+                                animate={{ height: bar.height }}
+                                transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+                                className={`w-full max-w-[50px] bg-gradient-to-t ${bar.color} rounded-t-lg shadow-lg relative group`}
+                              >
+                                <span className="absolute top-[-24px] inset-x-0 text-center text-[10px] font-bold text-white">{bar.rate}</span>
+                              </motion.div>
+                              <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider text-center">{bar.label}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -1263,17 +1330,17 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Snap Job CRM Side */}
+              {/* Snap Job Board Side */}
               <div className="border border-emerald-500/15 hover:border-emerald-500/30 transition-colors rounded-3xl p-4 sm:p-6 md:p-8 bg-gradient-to-br from-primary/5 to-emerald-500/[0.02] backdrop-blur-2xl relative overflow-hidden shadow-2xl flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" /> Snap Job CRM
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" /> Snap Job Board
                     </h3>
                     <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 uppercase tracking-wider font-mono">New Way</span>
                   </div>
 
-                  {/* CRM Card Simulation */}
+                  {/* Board Card Simulation */}
                   <div className="bg-[#09090b]/80 p-3 sm:p-4 rounded-xl border border-white/5 space-y-3.5">
                     <div className="flex items-center justify-between p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-xs text-white">
                       <div className="flex items-center gap-2">
@@ -1283,7 +1350,7 @@ export default function LandingPage() {
                           <span className="text-[8px] text-zinc-400">Software Engineer</span>
                         </div>
                       </div>
-                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 font-bold rounded text-[9px] border border-emerald-500/10 animate-pulse">Active Interview</span>
+                      <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 font-bold rounded text-[9px] border border-emerald-500/10 animate-pulse">Interview</span>
                     </div>
 
                     <div className="flex flex-col sm:flex-row justify-between gap-2 border-t border-white/5 pt-2.5 text-[9px] sm:text-[10px] text-zinc-400 font-medium">
@@ -1309,7 +1376,7 @@ export default function LandingPage() {
         </section>
 
         {/* --- DEEP ANALYTICS FUNNEL SECTION --- */}
-        <section className="py-28 sm:py-36 relative overflow-hidden">
+        <section id="analytics" className="py-28 sm:py-36 relative overflow-hidden">
           <div className="absolute left-[-5%] top-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-indigo-500/10 blur-[150px] rounded-full pointer-events-none" />
           <div className="container mx-auto px-6 max-w-6xl relative z-10">
             <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -1320,12 +1387,16 @@ export default function LandingPage() {
                 transition={{ duration: 0.7 }}
               >
                 <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest px-3 py-1 rounded-full bg-primary/5 border border-primary/10">Advanced Analytics</span>
-                <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white mt-5 mb-6 leading-tight">Stop Guessing. <br />Start Measuring.</h2>
+                <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white mt-5 mb-6 leading-tight">Identify Funnel Bottlenecks.</h2>
                 <p className="text-base sm:text-lg text-zinc-400 mb-8 leading-relaxed">
-                  Are you dropping the ball on resume parsing or failing at the technical code screen? Snap Job's automated analytics breakdown exposes conversion bottlenecks instantly.
+                  Are you dropping the ball on resume parsing or failing at the technical code screen? Snap Job's analytics dashboard aggregates your statistics to show you exactly where your applications stall.
                 </p>
                 <ul className="space-y-4 mb-10">
-                  {['Calculate Resume response ratios', 'Identify stages with highest dropoffs', 'Visualize historical offer trend lines'].map((item, i) => (
+                  {[
+                    'Track response ratios of your resumes',
+                    'Identify stages with the highest dropoff rates',
+                    'Measure average duration from application to first interview round'
+                  ].map((item, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm font-semibold text-zinc-300">
                       <Target className="w-5 h-5 text-indigo-400 shrink-0" /> {item}
                     </li>
@@ -1339,18 +1410,31 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8 }}
+                className="w-full"
               >
                 <Card3DTilt className="bg-[#121214]/65 border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-2xl">
-                  <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 sm:gap-0">
-                    <div>
-                      <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Funnel Yield</p>
-                      <h3 className="text-2xl sm:text-3xl font-extrabold text-white">24.5% Interview Rate</h3>
-                    </div>
-                    <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold rounded-full text-[11px]">+5.2% this week</span>
+                  <div className="mb-6">
+                    <p className="text-xs text-zinc-500 font-bold uppercase tracking-wider mb-1">Application Funnel Overview</p>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-white">Funnel Metrics</h3>
                   </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    {[
+                      { label: "Response Rate", val: "45.2%" },
+                      { label: "Interview Rate", val: "24.5%" },
+                      { label: "Offer Rate", val: "4.0%" },
+                      { label: "Avg. Time to Interview", val: "12 Days" }
+                    ].map((stat, i) => (
+                      <div key={i} className="bg-white/[0.02] border border-white/5 rounded-xl p-3 text-center">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase block leading-tight">{stat.label}</span>
+                        <p className="text-lg font-extrabold text-white mt-1">{stat.val}</p>
+                      </div>
+                    ))}
+                  </div>
+
                   <div className="h-60 w-full text-xs">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={[{name: 'Applied', v: 100}, {name: 'Screening', v: 45}, {name: 'Interview', v: 2450}, {name: 'Offer', v: 4}]} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+                      <BarChart data={[{name: 'Applied', v: 100}, {name: 'Assessment', v: 45}, {name: 'Interview', v: 24}, {name: 'Offer', v: 4}]} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
                         <XAxis dataKey="name" stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
                         <YAxis stroke="#52525b" fontSize={11} tickLine={false} axisLine={false} />
@@ -1369,22 +1453,64 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* --- WORKFLOW TIMELINE --- */}
+        {/* --- TRUST & UTILITY SECTION --- */}
+        <section className="py-28 sm:py-36 bg-gradient-to-b from-transparent via-white/[0.01] to-transparent relative">
+          <div className="container mx-auto px-6 max-w-6xl">
+            <div className="text-center mb-20">
+              <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest px-3 py-1 rounded-full bg-primary/5 border border-primary/10">The Job Seeker Journey</span>
+              <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white mt-5 mb-6">Designed for real job hunt outcomes.</h2>
+              <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+                Why use spreadsheets? Snap Job provides a structured ecosystem to help you stay ahead at every stage of the application cycle.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+              {[
+                { step: "01", title: "Apply & Centralize", desc: "Consolidate all job postings, referral details, salary expectations, and application links in a single source of truth.", icon: Briefcase },
+                { step: "02", title: "Track Progress", desc: "Visually organize applications across 5 stages: Applied, Assessment, Interview, Offer, and Rejected. Know where you stand at a glance.", icon: LayoutDashboard },
+                { step: "03", title: "Prepare & Log", desc: "Track individual rounds (Technical, HR, Coding). Prepare notes and save feedback details so you never repeat mistakes.", icon: Clock },
+                { step: "04", title: "Analyze Outcomes", desc: "Review response rates, interview conversion percentages, and time-to-interview metrics. Pinpoint where your funnel leaks.", icon: LineChart },
+                { step: "05", title: "Optimize Strategy", desc: "Use quantitative insights to refine your resume, targeting, and preparation to achieve higher offer conversion ratios.", icon: Target }
+              ].map((item, i) => {
+                const Icon = item.icon;
+                return (
+                  <Card3DTilt 
+                    key={i} 
+                    className="p-6 rounded-3xl bg-[#121214]/65 border border-white/5 relative flex flex-col justify-between min-h-[220px]"
+                  >
+                    <div>
+                      <div className="flex justify-between items-center mb-6">
+                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center">
+                          <Icon className="w-5 h-5 text-indigo-400" />
+                        </div>
+                        <span className="text-2xl font-black text-white/5 font-mono">{item.step}</span>
+                      </div>
+                      <h3 className="text-sm font-extrabold text-white mb-2">{item.title}</h3>
+                      <p className="text-xs text-zinc-400 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </Card3DTilt>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* --- PRODUCT WORKFLOW SECTION --- */}
         <section className="py-28 sm:py-36 bg-white/[0.01] border-y border-white/[0.06]">
           <div className="container mx-auto px-6 max-w-5xl text-center">
-            <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest px-3 py-1 rounded-full bg-primary/5 border border-primary/10">The Pipeline</span>
-            <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white mt-5 mb-24">Setting up takes 60 seconds.</h2>
+            <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest px-3 py-1 rounded-full bg-primary/5 border border-primary/10">The Hiring Funnel</span>
+            <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white mt-5 mb-24">Follow the canonical pipeline.</h2>
 
             <div className="relative">
               {/* Connecting Line */}
-              <div className="hidden md:block absolute top-[28px] left-0 w-full h-0.5 bg-white/5 z-0" />
+              <div className="hidden md:block absolute top-[28px] left-[12%] right-[12%] h-0.5 bg-white/5 z-0" />
 
               <div className="grid md:grid-cols-4 gap-12 md:gap-6 relative z-10">
                 {[
-                  { step: "01", title: "Sign Up", desc: "Create your workspace in seconds." },
-                  { step: "02", title: "Import Applications", desc: "Log jobs manually or import from CSV." },
-                  { step: "03", title: "Link Resumes", desc: "Add resume files to specific entries." },
-                  { step: "04", title: "Secure Offers", desc: "Monitor funnel stages and close deals." }
+                  { step: "01", title: "Applied", desc: "Log jobs, save details (url, company, salary), and track initial applications in one database." },
+                  { step: "02", title: "Assessment", desc: "Monitor take-home assignments, technical screeners, and Online Assessments (OAs)." },
+                  { step: "03", title: "Interview", desc: "Track technical rounds, system design, and behavioral calls. Store feedback and notes." },
+                  { step: "04", title: "Offer / Rejected", desc: "Celebrate job offers, compare salary packages, and record rejection histories for analysis." }
                 ].map((item, i) => (
                   <motion.div 
                     key={i} 
@@ -1508,12 +1634,12 @@ export default function LandingPage() {
                 {[
                   { q: "Is Snap Job actually free?", a: "Yes. Core application tracking features are 100% free forever. Job hunting is stressful enough without having to pay for monthly subscription software." },
                   { q: "Can I import my existing spreadsheet data?", a: "Absolutely. You can import your current job application data from any standard CSV spreadsheet directly in your settings, or export your Snap Job workspace back to CSV with a single click." },
-                  { q: "Does it support tracking recruiters and company contacts?", a: "Yes. Snap Job features a built-in Company CRM. You can save recruiter names, emails, phone numbers, and custom notes directly to specific applications and company profiles so you never lose contacts." },
+                  { q: "How does Interview Tracking work?", a: "You can track multiple interview rounds (such as Coding, System Design, or Behavioral) for each application, schedule dates, store interviewer details, and record feedback and preparation notes directly inside the application workspace." },
                   { q: "How do interview reminders and notifications work?", a: "You can configure automated email notifications and dashboard alerts for upcoming interviews, screeners, and online assessments (OAs) in your Settings dashboard." },
-                  { q: "Can I upload my resumes here?", a: "Absolutely. The Resume Vault lets you upload PDF documents and map specific versions to specific company applications so you always know which CV you applied with." },
+                  { q: "Can I upload my resumes here?", a: "Absolutely. The Resume Vault lets you upload PDF documents and map specific versions to specific applications so you always know which CV you applied with." },
                   { q: "How secure is my data?", a: "Your data is encrypted both in transit and at rest. We never sell your application data or personal information to third parties, and your data remains entirely yours." },
                   { q: "Does it sync with my calendar?", a: "Yes! Currently, we support internal schedules and alarms. Native Google Calendar integrations can be toggled via your Settings/Preferences dashboard." },
-                  { q: "Can I track custom application stages?", a: "Yes. While we provide standard stages (Applied, Applied, OA, Offer, Rejected), you can filter and organize your board dynamically by status, priority, and source." }
+                  { q: "Can I modify the application pipeline stages?", a: "Snap Job strictly enforces the 5 canonical job search stages (Applied, Assessment, Interview, Offer, Rejected) to maintain standard workflow integrity across analytics, calendar syncing, and dashboard metrics, while allowing you to filter and sort jobs dynamically." }
                 ].map((faq, i) => {
                   const isActive = activeFaq === i;
                   return (
@@ -1559,7 +1685,7 @@ export default function LandingPage() {
             <div className="flex items-center justify-center gap-1 sm:gap-4 mb-12 max-w-lg mx-auto relative z-10">
               {[
                 { label: 'Applied', icon: Briefcase, color: 'border-primary/30 text-primary bg-primary/10' },
-                { label: 'Screening', icon: Search, color: 'border-amber-500/30 text-amber-500 bg-amber-500/10' },
+                { label: 'Assessment', icon: Search, color: 'border-amber-500/30 text-amber-500 bg-amber-500/10' },
                 { label: 'Interview', icon: Calendar, color: 'border-purple-500/30 text-purple-400 bg-purple-500/10' },
                 { label: 'Offer', icon: CheckCircle2, color: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' }
               ].map((node, i) => {

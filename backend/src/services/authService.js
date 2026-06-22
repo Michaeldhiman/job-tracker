@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import Job from "../models/Job.js";
-import Company from "../models/Company.js";
 import Resume from "../models/Resume.js";
 import { config } from "../config/runtimeConfig.js";
 
@@ -137,7 +136,6 @@ export const deleteAccount = async (userId) => {
 
   await Promise.all([
     Job.deleteMany({ userId }),
-    Company.deleteMany({ userId }),
     Resume.deleteMany({ userId }),
     User.findByIdAndDelete(userId)
   ]);

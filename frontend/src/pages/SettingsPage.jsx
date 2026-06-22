@@ -353,7 +353,7 @@ function SettingsPage() {
   };
 
   const handleDeleteAccount = async () => {
-    if (window.confirm('Are you absolutely sure? This will permanently delete your account, all job applications, companies, and resumes. This action cannot be undone.')) {
+    if (window.confirm('Are you absolutely sure? This will permanently delete your account, all job applications, and resumes. This action cannot be undone.')) {
       try {
         await axiosClient.delete('/api/auth/account');
         navigate('/');
@@ -720,7 +720,7 @@ function SettingsPage() {
             <div className="flex-1 min-w-0">
               <p className="text-base font-semibold text-text">Export CSV</p>
               <p className="text-sm text-text-muted mt-2 leading-relaxed max-w-2xl">
-                Download a complete spreadsheet containing all your companies, applications, contacts, and notes.
+                Download a complete spreadsheet containing all your applications and notes.
               </p>
             </div>
             <Button id="settings-export-csv" onClick={handleExportData} disabled={isExportingCsv} variant="secondary" className="w-full lg:w-auto h-11 px-6 shrink-0">

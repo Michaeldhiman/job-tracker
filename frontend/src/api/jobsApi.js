@@ -61,11 +61,6 @@ export const searchJobs = async (params = {}) => {
   return response.data;
 };
 
-export const getCompanies = async (params = {}) => {
-  const response = await axiosClient.get('/api/companies', { params });
-  return response.data;
-};
-
 export const getResumes = async (params = {}) => {
   const response = await axiosClient.get('/api/resumes', { params });
   return response.data;

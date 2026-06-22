@@ -17,7 +17,6 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import User from "./models/User.js";
 import Job from "./models/Job.js";
-import Company from "./models/Company.js";
 import Resume from "./models/Resume.js";
 import ActivityLog from "./models/ActivityLog.js";
 import Event from "./models/Event.js";
@@ -379,7 +378,6 @@ async function seed() {
   await Promise.all([
     User.deleteMany({}),
     Job.deleteMany({}),
-    Company.deleteMany({}),
     Resume.deleteMany({}),
     ActivityLog.deleteMany({}),
     Event.deleteMany({})
@@ -410,32 +408,7 @@ async function seed() {
 
   const userId = mainUser._id;
 
-  // ── Step 3: Create companies ───────────────────────────────────────────
-  console.log("\n── Creating companies ──");
-  const companyMap = new Map(); // name -> companyDoc
-  const companyNotes = [
-    "Dream company. Great engineering culture.",
-    "Good WLB. Tier-1 product company.",
-    "Fast-growing startup. Interesting problem space.",
-    "Strong compensation. Competitive hiring bar.",
-    "Excellent mentorship program for new grads.",
-    "Known for cutting-edge tech stack.",
-    null, null // Some without notes
-  ];
-
-  for (const def of COMPANY_DEFS) {
-    const doc = await Company.create({
-      userId,
-      name: def.name,
-      website: def.website || undefined,
-      location: def.location || undefined,
-      industry: def.industry || undefined,
-      careerPage: def.careerPage || undefined,
-      notes: pick(companyNotes) || undefined
-    });
-    companyMap.set(def.name, doc);
-  }
-  console.log(`✓ Created ${companyMap.size} companies`);
+  // ── Step 3: Deprecated (Companies CRM Removed) ─────────────────────────
 
   // ── Step 4: Create resumes ─────────────────────────────────────────────
   console.log("\n── Creating resumes ──");
@@ -514,8 +487,6 @@ async function seed() {
       }
     }
 
-    const companyDoc = companyMap.get(companyDef.name);
-
     // Compute tags
     const tags = generateTagsForRole(role);
 
@@ -534,7 +505,6 @@ async function seed() {
     const jobData = {
       userId,
       company: companyDef.name,
-      companyId: companyDoc?._id,
       role,
       status: overrides.status || finalStatus,
       appliedDate: overrides.appliedDate || appliedDate,
@@ -991,10 +961,10 @@ async function seed() {
 
   const validCsv = `company,role,status,appliedDate,source,priority,location,salary,recruiterName,recruiterEmail,jobUrl,followUpDate,interviewDate,tags,notes
 Google,SDE Intern,Applied,2026-06-01,LinkedIn,High,Bangalore,50000,Sarah Chen,sarah@google.com,https://careers.google.com/12345,2026-06-10,2026-06-15,"React;Node","Applied through referral"
-Amazon,SDE-1,OA,2026-06-03,Referral,Medium,Hyderabad,1800000,John Smith,john@amazon.com,https://amazon.jobs/67890,2026-06-12,2026-06-18,"Java;AWS","OA cleared - 3 questions"
-Microsoft,Frontend Developer,Screening,2026-05-20,Career Page,High,Noida,2200000,Priya Sharma,priya@microsoft.com,https://careers.microsoft.com/11111,,2026-06-20,"React;TypeScript","Phone screen scheduled"
+Amazon,SDE-1,Assessment,2026-06-03,Referral,Medium,Hyderabad,1800000,John Smith,john@amazon.com,https://amazon.jobs/67890,2026-06-12,2026-06-18,"Java;AWS","OA cleared - 3 questions"
+Microsoft,Frontend Developer,Interview,2026-05-20,Career Page,High,Noida,2200000,Priya Sharma,priya@microsoft.com,https://careers.microsoft.com/11111,,2026-06-20,"React;TypeScript","Phone screen scheduled"
 Stripe,Backend Engineer,Applied,2026-06-05,LinkedIn,Medium,Remote,,,,,,Node.js;MongoDB,
-Meta,Full Stack Developer,Technical,2026-05-15,Referral,High,Gurugram,2500000,Amit Kumar,amit@meta.com,https://metacareers.com/22222,2026-06-08,2026-06-12,"React;Node.js;GraphQL","Strong referral from team lead"`;
+Meta,Full Stack Developer,Interview,2026-05-15,Referral,High,Gurugram,2500000,Amit Kumar,amit@meta.com,https://metacareers.com/22222,2026-06-08,2026-06-12,"React;Node.js;GraphQL","Strong referral from team lead"`;
 
   const invalidCsv = `company,role,status,appliedDate,source,priority,location,salary
 ,Backend Dev,Applied,2026-06-01,LinkedIn,High,Remote,100000
@@ -1019,7 +989,6 @@ X,Y,Applied,2026-06-01,Other,Low,Remote,0`;
   console.log("  SEED COMPLETE — Summary");
   console.log("═".repeat(60));
   console.log(`  Users:          2 (main + empty)`);
-  console.log(`  Companies:      ${companyMap.size}`);
   console.log(`  Resumes:        ${allResumeDocs.length}`);
   console.log(`  Jobs:           ${jobCount}`);
   console.log(`  Calendar Events:${eventCount} (${standaloneEventCount} standalone + rest tied to jobs)`);
