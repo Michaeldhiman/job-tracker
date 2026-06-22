@@ -68,3 +68,12 @@ export const disconnectCalendar = async () => {
   const response = await axiosClient.post('/api/calendar/disconnect');
   return response.data;
 };
+
+/**
+ * Triggers an idempotent backfill of calendar events for existing jobs.
+ * Only needed for debugging / admin — the startup backfill runs automatically.
+ */
+export const backfillCalendarEvents = async () => {
+  const response = await axiosClient.post('/api/calendar/backfill');
+  return response.data;
+};

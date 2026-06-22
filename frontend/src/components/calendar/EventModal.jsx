@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  X, Calendar as CalendarIcon, MapPin, Building2, ExternalLink,
+  X, Calendar as CalendarIcon, Building2, ExternalLink,
   Trash2, Clock, Video, Edit2, Bell, BellOff, CheckCircle, RefreshCw, Briefcase
 } from 'lucide-react';
 import Button from '../ui/Button.jsx';
 import { format } from 'date-fns';
 import { deleteCalendarEvent } from '../../api/calendarApi.js';
-import { deleteJob } from '../../api/jobsApi.js';
 
 // ─── Job status badge config ───────────────────────────────────────────────
 const JOB_STATUS_STYLES = {
@@ -56,18 +55,36 @@ function DetailRow({ icon: Icon, iconClass = 'text-text-muted', children }) {
 }
 
 // ─── Main EventModal ───────────────────────────────────────────────────────
-export default function EventModal({ isOpen, onClose, event, onDelete, onEditJob }) {
+export default function EventModal({ isOpen, onClose, event, onDelete, onEditJob, onEditCustomEvent }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   if (!event) return null;
 
-  const { title, start, end, type, resource } = event;
+  const { title, start, end, type, resource, eventMeta } = event;
   const isCustom = type === 'custom';
 
+  // ── Read sync/reminder state from eventMeta (passed from CalendarPage) ───
+  // resource is the populated Job object for generated events and doesn't
+  // carry syncStatus, reminder24hSent, or reminder1hSent. eventMeta provides
+  // these regardless of event type.
+  const meta = eventMeta || {};
+  const syncStatus        = meta.syncStatus || '';
+  const reminder24hSent   = meta.reminder24hSent ?? false;
+  const reminder1hSent    = meta.reminder1hSent ?? false;
+
   // ── Derive display values ────────────────────────────────────────────────
-  const displayTitle    = isCustom
-    ? title
-    : resource?.role ? `${resource.role} Interview` : title;
+  const displayTitle = (() => {
+    if (isCustom) return title;
+    const company = resource?.company || '';
+    const role    = resource?.role    || '';
+    switch (type) {
+      case 'interview':  return role ? `${role} Interview` : title;
+      case 'followUp':   return company ? `Follow Up: ${company}` : title;
+      case 'assessment': return company ? `Assessment: ${company}` : title;
+      case 'offer':      return company ? `Offer Deadline: ${company}` : title;
+      default:           return title;
+    }
+  })();
 
   const displayCompany      = resource?.company || '';
   const displayNotes        = isCustom ? resource?.description || '' : resource?.notes || '';
@@ -75,9 +92,6 @@ export default function EventModal({ isOpen, onClose, event, onDelete, onEditJob
   const displayJobUrl       = !isCustom ? resource?.jobUrl || '' : '';
   const displayRound        = isCustom ? resource?.interviewRound || '' : '';
   const displayStatus       = !isCustom ? resource?.status || '' : '';
-  const syncStatus          = isCustom ? resource?.syncStatus || '' : '';
-  const reminder24hSent     = isCustom ? resource?.reminder24hSent ?? false : false;
-  const reminder1hSent      = isCustom ? resource?.reminder1hSent ?? false : false;
   const emailNotifsEnabled  = !isCustom ? (resource?.interviewReminders ?? false) : null;
 
   const typeLabel = isCustom && displayRound
@@ -87,35 +101,33 @@ export default function EventModal({ isOpen, onClose, event, onDelete, onEditJob
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleRemove = async () => {
     if (isCustom) {
-      if (!window.confirm('Delete this event? It will also be removed from Google Calendar if connected.')) return;
-      setIsDeleting(true);
-      try {
-        await deleteCalendarEvent(resource._id);
-        onClose();
-        onDelete?.();
-      } catch (err) {
-        alert(err.response?.data?.message || err.message || 'Failed to delete event');
-      } finally {
-        setIsDeleting(false);
-      }
+      if (!window.confirm('Delete this custom event? It will also be removed from Google Calendar if connected.')) return;
     } else {
-      const label = `${resource?.role || 'Job Application'} at ${resource?.company || 'Company'}`;
-      if (!window.confirm(`Delete your application for ${label}? This will remove all associated events and notes.`)) return;
-      setIsDeleting(true);
-      try {
-        await deleteJob(resource._id);
-        onClose();
-        onDelete?.();
-      } catch (err) {
-        alert(err.response?.data?.message || err.message || 'Failed to delete job application');
-      } finally {
-        setIsDeleting(false);
-      }
+      const typeLabel = TYPE_LABEL[type] ?? 'event';
+      if (!window.confirm(`Remove this ${typeLabel.toLowerCase()} event? This clears the scheduled date on the job application but does NOT delete the application itself.`)) return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // For both custom and generated events, we call deleteCalendarEvent.
+      // The backend distinguishes: generated events clear the job's date field;
+      // custom events are deleted from the Event collection.
+      await deleteCalendarEvent(event.id);
+      onClose();
+      onDelete?.();
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to remove event');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleEdit = () => {
-    if (!isCustom) onEditJob?.(resource);
+    if (isCustom) {
+      onEditCustomEvent?.(event);
+    } else {
+      onEditJob?.(resource);
+    }
   };
 
   // ── Shared modal content ──────────────────────────────────────────────────
@@ -195,10 +207,10 @@ export default function EventModal({ isOpen, onClose, event, onDelete, onEditJob
           </DetailRow>
         )}
 
-        {/* Reminder status — custom events */}
-        {isCustom && (
+        {/* Reminder status — all events (data sourced from eventMeta) */}
+        {syncStatus && (
           <DetailRow icon={Bell} iconClass="text-text-muted">
-            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1.5">Reminders</p>
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1.5">Reminders &amp; Sync</p>
             <div className="flex flex-wrap gap-2">
               <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${
                 reminder24hSent
@@ -216,11 +228,20 @@ export default function EventModal({ isOpen, onClose, event, onDelete, onEditJob
                 {reminder1hSent ? <CheckCircle className="w-3 h-3" /> : <BellOff className="w-3 h-3" />}
                 1h reminder {reminder1hSent ? 'sent' : 'pending'}
               </span>
+              {syncStatus && SYNC_STATUS[syncStatus] && (() => {
+                const s = SYNC_STATUS[syncStatus];
+                const Icon = s.icon;
+                return (
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border ${s.cls} bg-opacity-10`}>
+                    <Icon className="w-3 h-3" /> {s.label}
+                  </span>
+                );
+              })()}
             </div>
           </DetailRow>
         )}
 
-        {/* Reminder status — job events (if we know) */}
+        {/* Notification preference — job events only */}
         {!isCustom && emailNotifsEnabled !== null && (
           <DetailRow icon={Bell} iconClass="text-text-muted">
             <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-1.5">Notifications</p>
@@ -233,21 +254,6 @@ export default function EventModal({ isOpen, onClose, event, onDelete, onEditJob
               Interview reminders {emailNotifsEnabled ? 'enabled' : 'disabled'}
             </span>
           </DetailRow>
-        )}
-
-        {/* Google sync status — custom events */}
-        {isCustom && syncStatus && SYNC_STATUS[syncStatus] && (
-          <div className="flex items-center gap-2">
-            {(() => {
-              const s = SYNC_STATUS[syncStatus];
-              const Icon = s.icon;
-              return (
-                <span className={`flex items-center gap-1.5 text-xs font-medium ${s.cls}`}>
-                  <Icon className="w-3.5 h-3.5" /> {s.label}
-                </span>
-              );
-            })()}
-          </div>
         )}
 
         {/* Notes / Description */}
@@ -276,14 +282,13 @@ export default function EventModal({ isOpen, onClose, event, onDelete, onEditJob
         </Button>
 
         <div className="flex items-center gap-2">
-          {!isCustom && (
-            <Button
-              onClick={handleEdit}
-              className="h-9 px-4 text-sm font-medium"
-            >
-              <Edit2 className="w-4 h-4 mr-1.5" /> Edit Details
-            </Button>
-          )}
+          <Button
+            onClick={handleEdit}
+            className="h-9 px-4 text-sm font-medium"
+          >
+            <Edit2 className="w-4 h-4 mr-1.5" />
+            {isCustom ? 'Edit Event' : 'Edit Job'}
+          </Button>
           <Button onClick={onClose} variant="secondary" className="h-9 px-4 text-sm">
             Close
           </Button>

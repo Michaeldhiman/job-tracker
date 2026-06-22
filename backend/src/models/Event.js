@@ -49,6 +49,27 @@ const eventSchema = new mongoose.Schema(
       enum: ["pending", "synced", "failed"],
       default: "pending",
     },
+    // Legacy field — kept for backward-compatibility with existing records.
+    // New code uses sourceField as the canonical lookup key.
+    eventType: {
+      type: String,
+      enum: ["interview", "followUp", "assessment", "offer", "custom"],
+      default: "custom",
+    },
+    // "job"    — auto-generated from a Job scheduling field
+    // "custom" — manually created by the user
+    source: {
+      type: String,
+      enum: ["job", "custom"],
+      default: "custom",
+    },
+    // The exact Job field that produced this event.
+    // Used as the canonical upsert key alongside jobId.
+    sourceField: {
+      type: String,
+      enum: ["interviewDate", "followUpDate", "assessmentDeadline", "offerDeadline"],
+      default: null,
+    },
     // Duplicate-prevention flags for interview reminder emails.
     // Both are automatically reset to false if date or startTime changes.
     reminder24hSent: {
@@ -75,7 +96,36 @@ eventSchema.pre("save", function resetReminders(next) {
   next();
 });
 
+// Sync event date and startTime back to the Job record for auto-generated events.
+// Uses sourceField as the canonical field name.
+eventSchema.pre("save", async function syncToJob(next) {
+  const field = this.sourceField;
+  if (this.jobId && field) {
+    try {
+      const Job = mongoose.model("Job");
+      const job = await Job.findById(this.jobId);
+      if (job) {
+        const [hours, minutes] = (this.startTime || "09:00").split(":").map(Number);
+        // Build UTC midnight for the event date, then combine with start time
+        const dateStr = new Date(this.date).toISOString().slice(0, 10);
+        const combinedDate = new Date(`${dateStr}T${String(hours).padStart(2,"0")}:${String(minutes).padStart(2,"0")}:00.000Z`);
+
+        const existingJobDate = job[field];
+        if (!existingJobDate || new Date(existingJobDate).getTime() !== combinedDate.getTime()) {
+          job[field] = combinedDate;
+          await job.save();
+        }
+      }
+    } catch (err) {
+      console.error(`[EventSchema] Error syncing event ${this._id} to job:`, err.message);
+    }
+  }
+  next();
+});
+
 eventSchema.index({ userId: 1, date: -1 });
 eventSchema.index({ googleEventId: 1 });
+// Compound index for fast upsert lookups by job + sourceField
+eventSchema.index({ jobId: 1, sourceField: 1 }, { sparse: true });
 
 export default mongoose.model("Event", eventSchema);

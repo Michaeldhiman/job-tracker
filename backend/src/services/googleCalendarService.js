@@ -295,7 +295,28 @@ export const syncEvents = async (userId) => {
   for (const gEvt of googleEvents) {
     if (gEvt.status === "cancelled") {
       if (user.calendarSyncCancellations !== false) {
-        await Event.deleteOne({ userId, googleEventId: gEvt.id });
+        const event = await Event.findOne({ userId, googleEventId: gEvt.id });
+        if (event) {
+          if (event.jobId && event.eventType) {
+            const Job = (await import("../models/Job.js")).default;
+            const job = await Job.findById(event.jobId);
+            if (job) {
+              const fieldMap = {
+                interview: "interviewDate",
+                followUp: "followUpDate",
+                assessment: "assessmentDeadline",
+                offer: "offerDeadline"
+              };
+              const dateField = fieldMap[event.eventType];
+              if (dateField) {
+                job[dateField] = null;
+                await job.save();
+              }
+            }
+          } else {
+            await Event.deleteOne({ _id: event._id });
+          }
+        }
       }
       continue;
     }

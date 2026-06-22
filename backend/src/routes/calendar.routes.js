@@ -3,7 +3,7 @@ import {
   initOAuth, oauthCallback, getEvents, 
   createEvent, updateEvent, deleteEvent, 
   syncCalendar, getConnectionStatus, disconnectCalendar,
-  updateCalendarPreferences
+  updateCalendarPreferences, backfillJobEvents
 } from "../controllers/calendarController.js";
 import auth from "../middleware/auth.js";
 
@@ -17,6 +17,7 @@ router.get("/auth/init", auth, initOAuth);
 router.get("/status", auth, getConnectionStatus);
 router.put("/preferences", auth, updateCalendarPreferences);
 router.post("/sync", auth, syncCalendar);
+router.post("/backfill", auth, backfillJobEvents);
 router.post("/disconnect", auth, disconnectCalendar);
 
 router.route("/events")

@@ -1,20 +1,18 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay, isToday, isAfter, startOfDay, isTomorrow, isSameWeek } from 'date-fns';
+import { format, parse, startOfWeek, getDay, isToday, startOfDay } from 'date-fns';
 import enUS from 'date-fns/locale/en-US';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { searchJobs } from '../api/jobsApi.js';
 import { getCalendarEvents } from '../api/calendarApi.js';
-import { CalendarGridSkeleton, EventListSkeleton } from '../components/feedback/Skeletons.jsx';
+import { CalendarGridSkeleton } from '../components/feedback/Skeletons.jsx';
 import EventModal from '../components/calendar/EventModal.jsx';
 import NewEventModal from '../components/calendar/NewEventModal.jsx';
 import AddJobModal from '../components/jobs/AddJobModal.jsx';
 import Button from '../components/ui/Button.jsx';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  CalendarPlus, CalendarClock, Target, AlertCircle,
-  CheckCircle2, X, Plus, Clock, ChevronRight
+  CalendarPlus, X, Plus, Clock
 } from 'lucide-react';
 
 // ─── Module-level constants ────────────────────────────────────────────────
@@ -41,41 +39,15 @@ export const TYPE_LABELS = {
 
 export const getEventDisplayTitle = (evt) => {
   if (evt.type === 'custom') return evt.title;
-  if (evt.resource?.role) return `${evt.resource.role} Interview`;
+  if (evt.type === 'interview' && evt.resource?.role) return `${evt.resource.role} Interview`;
+  if (evt.type === 'followUp' && evt.resource?.role) return `Follow Up: ${evt.resource.company}`;
+  if (evt.type === 'assessment' && evt.resource?.role) return `Assessment: ${evt.resource.company}`;
+  if (evt.type === 'offer' && evt.resource?.role) return `Offer Deadline: ${evt.resource.company}`;
   return evt.title;
 };
 
 export const getEventDisplayCompany = (evt) => evt.resource?.company || '';
 
-// ─── EventCard — used in sidebar and mobile list ───────────────────────────
-function EventCard({ evt, onClick }) {
-  const dotClass = TYPE_STYLES[evt.type]?.dot ?? 'bg-primary';
-  return (
-    <button
-      onClick={onClick}
-      className="w-full p-3 rounded-xl bg-surface hover:bg-surface-elevated border border-border hover:border-primary/30 cursor-pointer transition-all text-left flex items-start gap-3 group focus:outline-none focus:ring-1 focus:ring-primary/50"
-    >
-      {/* Type color bar */}
-      <div className={`w-1 self-stretch rounded-full shrink-0 ${dotClass}`} />
-      <div className="min-w-0 flex-1">
-        <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest block">
-          {TYPE_LABELS[evt.type] ?? evt.type}
-        </span>
-        <p className="text-sm font-medium text-text line-clamp-1 mt-0.5 group-hover:text-primary transition-colors">
-          {getEventDisplayTitle(evt)}
-        </p>
-        {getEventDisplayCompany(evt) && (
-          <p className="text-xs text-text-muted mt-0.5 line-clamp-1">{getEventDisplayCompany(evt)}</p>
-        )}
-        <p className="text-xs text-text-muted mt-1.5 flex items-center gap-1">
-          <Clock className="w-3 h-3 shrink-0" />
-          {format(new Date(evt.start), 'h:mm a')}
-        </p>
-      </div>
-      <ChevronRight className="w-4 h-4 text-text-muted shrink-0 mt-1 group-hover:text-primary transition-colors" />
-    </button>
-  );
-}
 
 // ─── EventListItem — compact row inside EventListModal ─────────────────────
 function EventListItem({ evt, onClick }) {
@@ -164,13 +136,10 @@ export default function CalendarPage() {
   const [showNewEvent, setShowNewEvent] = useState(false);
   const [showEditJob, setShowEditJob] = useState(false);
   const [jobToEdit, setJobToEdit] = useState(null);
+  const [customEventToEdit, setCustomEventToEdit] = useState(null);
   const [calendarDate, setCalendarDate] = useState(new Date());
 
-  // Upcoming events overlay modal
-  const [showAllUpcomingModal, setShowAllUpcomingModal] = useState(false);
-
   // Mobile UX
-  const [activeTab, setActiveTab] = useState('today');
   const [currentView, setCurrentView] = useState('month');
   const [selectedDateForNewEvent, setSelectedDateForNewEvent] = useState(null);
 
@@ -180,49 +149,48 @@ export default function CalendarPage() {
   const [eventListEvents, setEventListEvents] = useState([]);  // events for multi-event modal
 
   useEffect(() => {
-    // Default to month view on all screen sizes so date-cell taps work.
-    // The event list below the calendar (Today/Tomorrow/Upcoming tabs) already
-    // provides the agenda-style overview on mobile — the calendar itself is
-    // used as a visual date-picker, which requires the month grid.
     setCurrentView('month');
   }, []);
 
   // ── Data fetching ────────────────────────────────────────────────────────
   const fetchAllEvents = async () => {
     try {
-      const jobsRes = await searchJobs({ limit: 1000 });
-      const mappedJobsEvents = (jobsRes.results || []).flatMap(job => {
-        const evts = [];
-        if (job.interviewDate) {
-          evts.push({
-            title: `Interview: ${job.company}`,
-            start: new Date(job.interviewDate),
-            end: new Date(new Date(job.interviewDate).getTime() + 60 * 60 * 1000),
-            resource: job,
-            type: 'interview',
-          });
-        }
-        if (job.followUpDate) {
-          evts.push({
-            title: `Follow Up: ${job.company}`,
-            start: new Date(job.followUpDate),
-            end: new Date(new Date(job.followUpDate).getTime() + 30 * 60 * 1000),
-            resource: job,
-            type: 'followUp',
-          });
-        }
-        return evts;
-      });
+      const res = await getCalendarEvents();
+      const mappedEvents = (res.events || [])
+        .filter(evt => evt.date && evt.startTime && evt.endTime)
+        .map(evt => {
+          const datePart = new Date(evt.date).toISOString().split('T')[0];
+          const start = new Date(`${datePart}T${evt.startTime}:00`);
+          const end = new Date(`${datePart}T${evt.endTime}:00`);
 
-      const customEventsRes = await getCalendarEvents();
-      const mappedCustomEvents = (customEventsRes.events || []).map(evt => {
-        const datePart = new Date(evt.date).toISOString().split('T')[0];
-        const start = new Date(`${datePart}T${evt.startTime}:00`);
-        const end = new Date(`${datePart}T${evt.endTime}:00`);
-        return { id: evt._id, title: evt.title, start, end, resource: evt, type: 'custom' };
-      });
+          if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
 
-      setEvents([...mappedJobsEvents, ...mappedCustomEvents]);
+          const isCustom = !evt.jobId;
+          const type = isCustom ? 'custom' : (evt.eventType || 'custom');
+          const resource = isCustom ? evt : evt.jobId;
+
+          return {
+            id: evt._id,
+            title: evt.title,
+            start,
+            end,
+            resource,
+            type,
+            // Pass event-level metadata so EventModal can show sync/reminder
+            // for both custom and generated events (resource is the Job object
+            // for generated events and doesn't contain these fields).
+            eventMeta: {
+              syncStatus: evt.syncStatus,
+              reminder24hSent: evt.reminder24hSent,
+              reminder1hSent: evt.reminder1hSent,
+              source: evt.source,
+              sourceField: evt.sourceField,
+            }
+          };
+        })
+        .filter(Boolean);
+
+      setEvents(mappedEvents);
     } catch (err) {
       console.error('Failed to load calendar events:', err);
     } finally {
@@ -255,10 +223,16 @@ export default function CalendarPage() {
   // 0 events → highlight date, no modal
   // 1 event  → open EventModal directly
   // 2+ events → open EventListModal
-  const handleSelectSlot = useCallback(({ start }) => {
+  const handleSelectSlot = useCallback((slotInfo) => {
+    if (!slotInfo || !slotInfo.start) return;
+    const start = slotInfo.start;
     const clickedDay = startOfDay(new Date(start));
     const dayEvents = events
-      .filter(e => startOfDay(new Date(e.start)).getTime() === clickedDay.getTime())
+      .filter(e => {
+        const es = new Date(e.start);
+        if (isNaN(es.getTime())) return false;
+        return startOfDay(es).getTime() === clickedDay.getTime();
+      })
       .sort((a, b) => new Date(a.start) - new Date(b.start));
 
     if (dayEvents.length === 0) {
@@ -331,26 +305,6 @@ export default function CalendarPage() {
     },
   }), [events, handleSelectSlot]);
 
-  // ── Computed event groups ────────────────────────────────────────────────
-  const now = useMemo(() => new Date(), []);
-
-  const todayEvents = useMemo(() => {
-    return events.filter(e => isToday(new Date(e.start)));
-  }, [events]);
-
-  const upcomingEvents = useMemo(() => {
-    const todayEnd = new Date(now);
-    todayEnd.setHours(23, 59, 59, 999);
-    return events
-      .filter(e => new Date(e.start) > todayEnd)
-      .sort((a, b) => new Date(a.start) - new Date(b.start));
-  }, [events, now]);
-
-  const upcomingLimit = 10;
-  const displayedUpcoming = useMemo(() => {
-    return upcomingEvents.slice(0, upcomingLimit);
-  }, [upcomingEvents]);
-
   const openNewEvent = (date = null) => {
     setSelectedDateForNewEvent(date);
     setShowNewEvent(true);
@@ -375,252 +329,61 @@ export default function CalendarPage() {
 
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* Desktop Layout                                                      */}
+      {/* Desktop + Mobile Calendar (full-width)                             */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      <div className="hidden lg:flex flex-row gap-6">
-
-        {/* Sidebar */}
-        <div className="w-80 shrink-0 flex flex-col gap-5">
-
-          {/* Today */}
-          <div className="glass-panel p-5 rounded-2xl flex flex-col gap-4">
-            <h3 className="font-semibold text-text flex items-center gap-2 text-sm">
-              <Target className="w-4 h-4 text-primary shrink-0" /> Today's Events
-              {todayEvents.length > 0 && (
-                <span className="ml-auto text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                  {todayEvents.length}
-                </span>
-              )}
-            </h3>
-            {loading ? (
-              <EventListSkeleton count={3} />
-            ) : todayEvents.length > 0 ? (
-              <div className="space-y-2">
-                {todayEvents.map((evt, i) => (
-                  <EventCard key={i} evt={evt} onClick={() => setSelectedEvent(evt)} />
-                ))}
-              </div>
-            ) : (
-              <div className="py-5 text-center border border-dashed border-border rounded-xl">
-                <p className="text-sm text-text-muted">No events today.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Upcoming */}
-          <div className="glass-panel p-5 rounded-2xl flex flex-col gap-4">
-            <h3 className="font-semibold text-text flex items-center gap-2 text-sm">
-              <CalendarClock className="w-4 h-4 text-amber-500 shrink-0" /> Upcoming
-            </h3>
-            {loading ? (
-              <EventListSkeleton count={3} />
-            ) : displayedUpcoming.length > 0 ? (
-              <div className="space-y-3">
-                {displayedUpcoming.map((evt, i) => (
-                  <div key={i}>
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1 pl-1">
-                      {format(new Date(evt.start), 'MMM d, yyyy')}
-                    </p>
-                    <EventCard evt={evt} onClick={() => setSelectedEvent(evt)} />
-                  </div>
-                ))}
-                {upcomingEvents.length > upcomingLimit && (
-                  <button
-                    onClick={() => setShowAllUpcomingModal(true)}
-                    className="w-full py-2 text-center text-xs font-bold text-primary bg-primary/5 hover:bg-primary/10 border border-primary/20 hover:border-primary/30 rounded-xl transition-all mt-2"
-                  >
-                    View All ({upcomingEvents.length})
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="py-8 text-center flex flex-col items-center text-text-muted border border-dashed border-border rounded-xl">
-                <AlertCircle className="w-8 h-8 mb-2 opacity-20" />
-                <p className="text-sm">Your schedule is clear.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Main Calendar */}
-        <div className="flex-1 min-w-0 glass-card rounded-2xl p-6">
-          {/* Selected-date hint */}
-          {selectedDate && (
-            <div className="mb-4 px-4 py-2.5 rounded-xl border border-primary/20 bg-primary/5 flex items-center justify-between gap-3">
-              <p className="text-sm text-primary font-medium">
-                {format(selectedDate, 'MMMM d, yyyy')} — No events scheduled.
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => openNewEvent(format(selectedDate, 'yyyy-MM-dd'))}
-                  className="h-7 px-3 text-xs"
-                >
-                  <Plus className="w-3 h-3 mr-1" /> Add Event
-                </Button>
-                <button onClick={() => setSelectedDate(null)} className="text-text-muted hover:text-text transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+      <div className="glass-card rounded-2xl p-4 sm:p-6">
+        {/* Selected-date hint */}
+        {selectedDate && (
+          <div className="mb-4 px-4 py-2.5 rounded-xl border border-primary/20 bg-primary/5 flex items-center justify-between gap-3">
+            <p className="text-sm text-primary font-medium">
+              {format(selectedDate, 'MMMM d, yyyy')} — No events scheduled.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => openNewEvent(format(selectedDate, 'yyyy-MM-dd'))}
+                className="h-7 px-3 text-xs"
+              >
+                <Plus className="w-3 h-3 mr-1" /> Add Event
+              </Button>
+              <button onClick={() => setSelectedDate(null)} className="text-text-muted hover:text-text transition-colors">
+                <X className="w-4 h-4" />
+              </button>
             </div>
-          )}
-          {loading ? (
-            <CalendarGridSkeleton />
-          ) : (
-            <div className="h-[600px] lg:h-[760px]">
-              <Calendar
-                localizer={localizer}
-                events={events}
-                startAccessor="start"
-                endAccessor="end"
-                date={calendarDate}
-                onNavigate={(newDate) => setCalendarDate(newDate)}
-                style={{ height: '100%', color: 'rgb(var(--color-text))' }}
-                eventPropGetter={eventStyleGetter}
-                onSelectEvent={(evt) => setSelectedEvent(evt)}
-                dayPropGetter={dayPropGetter}
-                components={calendarComponents}
-                views={['month', 'agenda']}
-                length={1}
-                selectable={true}
-                onSelectSlot={handleSelectSlot}
-                onView={(v) => {
-                  // Auto-jump to today when switching to agenda so it always
-                  // shows today's events, not events for some past/future date.
-                  if (v === 'agenda') setCalendarDate(new Date());
-                }}
-                className="custom-calendar modern-calendar"
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* Mobile Layout                                                       */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      <div className="flex lg:hidden flex-col gap-6">
-
-        {/* Tab Selector */}
-        <div className="flex bg-surface-elevated/40 border border-border p-1 rounded-xl">
-          {['today', 'upcoming'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => {
-                setActiveTab(tab);
+          </div>
+        )}
+        {loading ? (
+          <CalendarGridSkeleton />
+        ) : (
+          <div className="h-[520px] sm:h-[640px] lg:h-[760px]">
+            <Calendar
+              localizer={localizer}
+              events={events}
+              startAccessor="start"
+              endAccessor="end"
+              date={calendarDate}
+              onNavigate={(newDate) => setCalendarDate(newDate)}
+              style={{ height: '100%', color: 'rgb(var(--color-text))' }}
+              eventPropGetter={eventStyleGetter}
+              onSelectEvent={(evt) => setSelectedEvent(evt)}
+              longPressThreshold={10}
+              dayPropGetter={dayPropGetter}
+              components={calendarComponents}
+              view={currentView}
+              onView={(v) => {
+                setCurrentView(v);
+                if (v === 'agenda') setCalendarDate(new Date());
               }}
-              className={`flex-1 py-2 text-center rounded-lg text-xs font-bold capitalize transition-all ${
-                activeTab === tab
-                  ? 'bg-primary text-white shadow-md'
-                  : 'text-text-muted hover:text-text'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Compact Calendar */}
-        <div className="glass-card rounded-2xl p-3">
-          {/* Selected-date hint on mobile */}
-          {selectedDate && (
-            <div className="mb-3 px-3 py-2 rounded-xl border border-primary/20 bg-primary/5 flex items-center justify-between gap-2">
-              <p className="text-xs text-primary font-medium flex-1 min-w-0 truncate">
-                {format(selectedDate, 'MMM d')} — No events. Tap + to add.
-              </p>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  onClick={() => openNewEvent(format(selectedDate, 'yyyy-MM-dd'))}
-                  className="text-xs font-semibold text-primary"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-                <button onClick={() => setSelectedDate(null)} className="text-text-muted">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
-          <div className="h-[440px]">
-            {loading ? (
-              <CalendarGridSkeleton />
-            ) : (
-              <Calendar
-                localizer={localizer}
-                events={events}
-                startAccessor="start"
-                endAccessor="end"
-                date={calendarDate}
-                onNavigate={(newDate) => setCalendarDate(newDate)}
-                style={{ height: '100%', color: 'rgb(var(--color-text))' }}
-                eventPropGetter={eventStyleGetter}
-                onSelectEvent={(evt) => setSelectedEvent(evt)}
-                longPressThreshold={10}
-                dayPropGetter={dayPropGetter}
-                components={calendarComponents}
-                view={currentView}
-                onView={(v) => {
-                  setCurrentView(v);
-                  // Auto-jump to today when switching to agenda.
-                  if (v === 'agenda') setCalendarDate(new Date());
-                }}
-                views={['month', 'week', 'agenda']}
-                length={1}
-                selectable={true}
-                onSelectSlot={handleSelectSlot}
-                className="custom-calendar modern-calendar"
-              />
-            )}
+              views={['month', 'agenda']}
+              length={1}
+              selectable={true}
+              onSelectSlot={handleSelectSlot}
+              className="custom-calendar modern-calendar"
+            />
           </div>
-        </div>
-
-        {/* Mobile Event List */}
-        <div className="glass-panel p-5 rounded-2xl flex flex-col gap-4">
-          <h3 className="font-semibold text-text flex items-center gap-2 text-sm">
-            {activeTab === 'today' && <><Target className="w-4 h-4 text-primary" /> Today's Events</>}
-            {activeTab === 'upcoming' && <><CalendarClock className="w-4 h-4 text-amber-500" /> Upcoming</>}
-          </h3>
-
-          {loading ? (
-            <EventListSkeleton count={2} />
-          ) : activeTab === 'today' ? (
-            todayEvents.length > 0 ? (
-              <div className="space-y-2">
-                {todayEvents.map((evt, i) => <EventCard key={i} evt={evt} onClick={() => setSelectedEvent(evt)} />)}
-              </div>
-            ) : (
-              <div className="py-6 text-center border border-dashed border-border rounded-xl">
-                <p className="text-sm text-text-muted">No events today.</p>
-              </div>
-            )
-          ) : (
-            displayedUpcoming.length > 0 ? (
-              <div className="space-y-3">
-                {displayedUpcoming.map((evt, i) => (
-                  <div key={i}>
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1 pl-1">
-                      {format(new Date(evt.start), 'MMM d, yyyy')}
-                    </p>
-                    <EventCard evt={evt} onClick={() => setSelectedEvent(evt)} />
-                  </div>
-                ))}
-                {upcomingEvents.length > upcomingLimit && (
-                  <button
-                    onClick={() => setShowAllUpcomingModal(true)}
-                    className="w-full py-2.5 text-center text-xs font-bold text-primary bg-primary/5 hover:bg-primary/10 border border-primary/20 hover:border-primary/30 rounded-xl transition-all mt-2 active:scale-95"
-                  >
-                    View All ({upcomingEvents.length})
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="py-8 text-center flex flex-col items-center text-text-muted border border-dashed border-border rounded-xl">
-                <AlertCircle className="w-8 h-8 mb-2 opacity-20" />
-                <p className="text-sm">Your schedule is clear.</p>
-              </div>
-            )
-          )}
-        </div>
+        )}
       </div>
+
+
 
       {/* ── Mobile FAB — persistent event creation button ─────────────────── */}
       <motion.button
@@ -629,7 +392,7 @@ export default function CalendarPage() {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.3, type: 'spring', stiffness: 300, damping: 20 }}
         onClick={() => openNewEvent()}
-        className="fixed bottom-6 right-5 z-40 lg:hidden w-14 h-14 rounded-full bg-primary hover:bg-primary-hover text-white shadow-xl shadow-primary/40 flex items-center justify-center transition-colors active:scale-95"
+        className="fixed bottom-6 right-5 z-40 sm:hidden w-14 h-14 rounded-full bg-primary hover:bg-primary-hover text-white shadow-xl shadow-primary/40 flex items-center justify-center transition-colors active:scale-95"
         aria-label="Create new event"
       >
         <Plus className="w-6 h-6" />
@@ -646,6 +409,11 @@ export default function CalendarPage() {
           setJobToEdit(job);
           setShowEditJob(true);
         }}
+        onEditCustomEvent={(evt) => {
+          setSelectedEvent(null);
+          setCustomEventToEdit(evt);
+          setShowNewEvent(true);
+        }}
       />
 
       <AddJobModal
@@ -657,9 +425,16 @@ export default function CalendarPage() {
 
       <NewEventModal
         isOpen={showNewEvent}
-        onClose={() => { setShowNewEvent(false); setSelectedDateForNewEvent(null); }}
+        onClose={() => { setShowNewEvent(false); setSelectedDateForNewEvent(null); setCustomEventToEdit(null); }}
         initialDate={selectedDateForNewEvent}
-        onSuccess={() => { setShowNewEvent(false); setSelectedDateForNewEvent(null); fetchAllEvents(); }}
+        eventToEdit={customEventToEdit ? {
+          _id: customEventToEdit.id,
+          title: customEventToEdit.title,
+          date: customEventToEdit.start,
+          startTime: customEventToEdit.start ? `${String(new Date(customEventToEdit.start).getHours()).padStart(2,'0')}:${String(new Date(customEventToEdit.start).getMinutes()).padStart(2,'0')}` : '09:00',
+          description: customEventToEdit.resource?.description || '',
+        } : null}
+        onSuccess={() => { setShowNewEvent(false); setSelectedDateForNewEvent(null); setCustomEventToEdit(null); fetchAllEvents(); }}
       />
 
       <EventListModal
@@ -679,15 +454,7 @@ export default function CalendarPage() {
         }}
       />
 
-      <UpcomingEventsModal
-        isOpen={showAllUpcomingModal}
-        onClose={() => setShowAllUpcomingModal(false)}
-        events={upcomingEvents}
-        onSelectEvent={(evt) => {
-          setSelectedEvent(evt);
-          setShowAllUpcomingModal(false);
-        }}
-      />
+
 
       {/* ── Calendar Styles ──────────────────────────────────────────────── */}
       <style>{`
@@ -1065,132 +832,3 @@ function EventListModal({ isOpen, onClose, date, events, onSelectEvent, onAddEve
   );
 }
 
-// ─── UpcomingEventsModal ───────────────────────────────────────────────────
-// Renders a list of all upcoming events in a bottom sheet on mobile and centered modal on desktop.
-function UpcomingEventsModal({ isOpen, onClose, events, onSelectEvent }) {
-  if (!isOpen) return null;
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* ── Mobile Bottom Sheet (hidden on sm+) ── */}
-          <div className="fixed inset-0 z-50 sm:hidden flex items-end justify-center">
-            <motion.div
-              key="backdrop-mobile"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={onClose}
-              className="absolute inset-0 bg-black/65 backdrop-blur-sm"
-            />
-            <motion.div
-              key="sheet"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 32, stiffness: 320 }}
-              className="relative w-full max-h-[88vh] glass-panel rounded-t-3xl shadow-2xl flex flex-col z-10 overflow-hidden"
-            >
-              {/* Drag handle */}
-              <div className="flex justify-center pt-3 pb-1 shrink-0">
-                <div className="w-10 h-1 rounded-full bg-border" />
-              </div>
-              {/* Header */}
-              <div className="px-5 pt-2 pb-4 border-b border-border flex items-center justify-between shrink-0">
-                <div>
-                  <h2 className="text-base font-bold text-text">Upcoming Events</h2>
-                  <p className="text-xs text-text-muted mt-0.5">
-                    {events.length} event{events.length !== 1 ? 's' : ''} scheduled
-                  </p>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-xl hover:bg-surface-elevated text-text-muted hover:text-text transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              {/* List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {events.map((evt, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">
-                      {format(new Date(evt.start), 'MMMM d, yyyy')}
-                    </p>
-                    <EventListItem
-                      evt={evt}
-                      onClick={() => onSelectEvent(evt)}
-                    />
-                  </div>
-                ))}
-              </div>
-              {/* Footer */}
-              <div className="p-4 border-t border-border bg-surface/60 flex items-center justify-end shrink-0">
-                <Button onClick={onClose} className="h-9 px-5 text-xs font-semibold">
-                  Close
-                </Button>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* ── Desktop Modal (hidden on mobile) ── */}
-          <div className="fixed inset-0 z-50 hidden sm:flex items-center justify-center p-4">
-            <motion.div
-              key="backdrop-desktop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={onClose}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              key="dialog"
-              initial={{ opacity: 0, scale: 0.96, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 16 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="relative w-full max-w-md max-h-[80vh] glass-panel rounded-2xl shadow-2xl flex flex-col z-10 overflow-hidden"
-            >
-              {/* Header */}
-              <div className="p-5 border-b border-border flex items-center justify-between shrink-0">
-                <div>
-                  <h2 className="text-lg font-bold text-text">Upcoming Events</h2>
-                  <p className="text-xs text-text-muted mt-0.5">
-                    {events.length} event{events.length !== 1 ? 's' : ''} scheduled
-                  </p>
-                </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-lg hover:bg-surface-elevated text-text-muted hover:text-text transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              {/* List */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
-                {events.map((evt, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <p className="text-[10px] font-bold text-text-muted uppercase tracking-wider pl-1">
-                      {format(new Date(evt.start), 'MMMM d, yyyy')}
-                    </p>
-                    <EventListItem
-                      evt={evt}
-                      onClick={() => onSelectEvent(evt)}
-                    />
-                  </div>
-                ))}
-              </div>
-              {/* Footer */}
-              <div className="p-4 border-t border-border bg-surface/50 flex items-center justify-end shrink-0">
-                <Button onClick={onClose} className="h-9 px-5 text-xs font-semibold">
-                  Close
-                </Button>
-              </div>
-            </motion.div>
-          </div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-}

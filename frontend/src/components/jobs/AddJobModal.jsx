@@ -24,7 +24,11 @@ const jobSchema = z.object({
   jobUrl: z.string().url("Invalid URL").optional().or(z.literal("")),
   tags: z.string().optional(),
   notes: z.string().optional(),
-  resumeId: z.string().optional()
+  resumeId: z.string().optional(),
+  interviewDate: z.string().optional().nullable().or(z.literal("")),
+  followUpDate: z.string().optional().nullable().or(z.literal("")),
+  assessmentDeadline: z.string().optional().nullable().or(z.literal("")),
+  offerDeadline: z.string().optional().nullable().or(z.literal(""))
 });
 
 export default function AddJobModal({ isOpen, onClose, onSuccess, jobToEdit = null }) {
@@ -74,7 +78,27 @@ export default function AddJobModal({ isOpen, onClose, onSuccess, jobToEdit = nu
           jobUrl: jobToEdit.jobUrl || '',
           tags: jobToEdit.tags ? jobToEdit.tags.join(', ') : '',
           notes: jobToEdit.notes || '',
-          resumeId: jobToEdit.resumeId?._id || jobToEdit.resumeId || ''
+          resumeId: jobToEdit.resumeId?._id || jobToEdit.resumeId || '',
+          interviewDate: jobToEdit.interviewDate ? (() => {
+            const d = new Date(jobToEdit.interviewDate);
+            const pad = (num) => String(num).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          })() : '',
+          followUpDate: jobToEdit.followUpDate ? (() => {
+            const d = new Date(jobToEdit.followUpDate);
+            const pad = (num) => String(num).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+          })() : '',
+          assessmentDeadline: jobToEdit.assessmentDeadline ? (() => {
+            const d = new Date(jobToEdit.assessmentDeadline);
+            const pad = (num) => String(num).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+          })() : '',
+          offerDeadline: jobToEdit.offerDeadline ? (() => {
+            const d = new Date(jobToEdit.offerDeadline);
+            const pad = (num) => String(num).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+          })() : ''
         });
       } else {
         reset({
@@ -91,7 +115,11 @@ export default function AddJobModal({ isOpen, onClose, onSuccess, jobToEdit = nu
           jobUrl: '',
           tags: '',
           notes: '',
-          resumeId: ''
+          resumeId: '',
+          interviewDate: '',
+          followUpDate: '',
+          assessmentDeadline: '',
+          offerDeadline: ''
         });
       }
       setError(null);
@@ -158,6 +186,11 @@ export default function AddJobModal({ isOpen, onClose, onSuccess, jobToEdit = nu
         payload.resumeName = null;
         payload.resumeUrl = null;
       }
+
+      if (!payload.interviewDate) payload.interviewDate = null;
+      if (!payload.followUpDate) payload.followUpDate = null;
+      if (!payload.assessmentDeadline) payload.assessmentDeadline = null;
+      if (!payload.offerDeadline) payload.offerDeadline = null;
       
       if (jobToEdit) {
         await updateJob(jobToEdit._id, payload);
@@ -424,6 +457,52 @@ export default function AddJobModal({ isOpen, onClose, onSuccess, jobToEdit = nu
                               </button>
                             </>
                           )}
+                        </div>
+                      </div>
+
+                      {/* Scheduling & Deadlines */}
+                      <div className="space-y-4 sm:col-span-2 border-t border-border/40 pt-4">
+                        <h4 className="text-sm font-semibold text-text uppercase tracking-wider">Scheduling & Deadlines</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Interview Date & Time */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-muted uppercase">Interview Date & Time</label>
+                            <input
+                              type="datetime-local"
+                              {...register("interviewDate")}
+                              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary [color-scheme:dark]"
+                            />
+                          </div>
+
+                          {/* Follow-Up Date */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-muted uppercase">Follow-Up Date</label>
+                            <input
+                              type="date"
+                              {...register("followUpDate")}
+                              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary [color-scheme:dark]"
+                            />
+                          </div>
+
+                          {/* Assessment Deadline */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-muted uppercase">Assessment Deadline</label>
+                            <input
+                              type="date"
+                              {...register("assessmentDeadline")}
+                              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary [color-scheme:dark]"
+                            />
+                          </div>
+
+                          {/* Offer Deadline */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-muted uppercase">Offer Deadline</label>
+                            <input
+                              type="date"
+                              {...register("offerDeadline")}
+                              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary [color-scheme:dark]"
+                            />
+                          </div>
                         </div>
                       </div>
 

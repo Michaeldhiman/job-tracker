@@ -219,6 +219,47 @@ export default function JobDetailsModal({ isOpen, job, onClose, onSuccess, onEdi
                           </span>
                           <span className="text-text font-medium">{formatDate(job.appliedDate)}</span>
                         </div>
+
+                        {job.interviewDate && (
+                          <div className="flex justify-between items-center py-0.5">
+                            <span className="text-text-muted flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-orange-400" /> Interview Date
+                            </span>
+                            <span className="text-text font-semibold">
+                              {new Date(job.interviewDate).toLocaleString(undefined, {
+                                month: 'short', day: 'numeric', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        )}
+
+                        {job.followUpDate && (
+                          <div className="flex justify-between items-center py-0.5">
+                            <span className="text-text-muted flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-amber-500" /> Follow-Up Date
+                            </span>
+                            <span className="text-text font-semibold">{formatDate(job.followUpDate)}</span>
+                          </div>
+                        )}
+
+                        {job.assessmentDeadline && (
+                          <div className="flex justify-between items-center py-0.5">
+                            <span className="text-text-muted flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-purple-400" /> Assessment Deadline
+                            </span>
+                            <span className="text-text font-semibold">{formatDate(job.assessmentDeadline)}</span>
+                          </div>
+                        )}
+
+                        {job.offerDeadline && (
+                          <div className="flex justify-between items-center py-0.5">
+                            <span className="text-text-muted flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-emerald-400" /> Offer Deadline
+                            </span>
+                            <span className="text-text font-semibold">{formatDate(job.offerDeadline)}</span>
+                          </div>
+                        )}
                         
                         <div className="flex justify-between items-center py-0.5">
                           <span className="text-text-muted flex items-center gap-2">

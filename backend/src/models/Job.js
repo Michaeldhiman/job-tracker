@@ -109,6 +109,12 @@ const jobSchema = new mongoose.Schema(
     interviewDate: {
       type: Date
     },
+    assessmentDeadline: {
+      type: Date
+    },
+    offerDeadline: {
+      type: Date
+    },
     // Free-form labels like "remote", "onsite", "senior", etc.
     tags: [
       {

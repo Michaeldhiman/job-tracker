@@ -2,6 +2,9 @@
 import mongoose from "mongoose";
 import Job from "../models/Job.js";
 import ActivityLog from "../models/ActivityLog.js";
+import Event from "../models/Event.js";
+import User from "../models/User.js";
+import { createGoogleEvent, updateGoogleEvent, deleteGoogleEvent } from "./googleCalendarService.js";
 
 // Helper to create consistent error objects with optional extra details.
 const buildError = (message, status = 400, details) => {
@@ -42,6 +45,12 @@ export const createJob = async (userId, payload) => {
     userId,
     appliedDate: initialAppliedDate
   });
+
+  try {
+    await syncJobEvents(job);
+  } catch (err) {
+    console.error("Failed to sync calendar events during createJob:", err);
+  }
 
   try {
     await ActivityLog.create({
@@ -123,6 +132,12 @@ export const updateJob = async (userId, jobId, payload) => {
   const savedJob = await job.save();
 
   try {
+    await syncJobEvents(savedJob);
+  } catch (err) {
+    console.error("Failed to sync calendar events during updateJob:", err);
+  }
+
+  try {
     if (payload.status && payload.status !== oldStatus) {
       await ActivityLog.create({
         userId,
@@ -155,6 +170,26 @@ export const deleteJob = async (userId, jobId) => {
   const job = await Job.findOne({ _id: jobId, userId });
   if (!job) {
     throw buildError("Job not found", 404);
+  }
+
+  // Delete all events associated with this job
+  try {
+    const events = await Event.find({ jobId });
+    const user = await User.findById(userId);
+    const isGCalConnected = user?.googleCalendarConnected;
+
+    for (const event of events) {
+      if (isGCalConnected && event.googleEventId && user.calendarSyncCancellations !== false) {
+        try {
+          await deleteGoogleEvent(userId, event.googleEventId);
+        } catch (err) {
+          console.error(`Failed to delete Google event ${event.googleEventId} during job deletion:`, err.message);
+        }
+      }
+      await Event.deleteOne({ _id: event._id });
+    }
+  } catch (err) {
+    console.error("Error cleaning up job calendar events during deletion:", err);
   }
 
   await Job.deleteOne({ _id: jobId });
@@ -248,5 +283,133 @@ export const getSummaryStats = async (userId) => {
   ]);
 
   return result;
+};
+
+export const syncJobEvents = async (job) => {
+  const userId = job.userId;
+  const user = await User.findById(userId);
+  const isGCalConnected = user?.googleCalendarConnected;
+
+  const mappings = [
+    {
+      field: "interviewDate",
+      sourceField: "interviewDate",
+      type: "interview",
+      title: `${job.company} - Interview (${job.role})`,
+      getDefaultTimes: (date) => {
+        const d = new Date(date);
+        const start = d.toTimeString().substring(0, 5); // HH:MM
+        const endD = new Date(d.getTime() + 60 * 60 * 1000);
+        const end = endD.toTimeString().substring(0, 5);
+        return { start, end };
+      }
+    },
+    {
+      field: "followUpDate",
+      sourceField: "followUpDate",
+      type: "followUp",
+      title: `${job.company} - Follow-up (${job.role})`,
+      getDefaultTimes: () => ({ start: "09:00", end: "10:00" })
+    },
+    {
+      field: "assessmentDeadline",
+      sourceField: "assessmentDeadline",
+      type: "assessment",
+      title: `${job.company} - Assessment Deadline (${job.role})`,
+      getDefaultTimes: () => ({ start: "09:00", end: "10:00" })
+    },
+    {
+      field: "offerDeadline",
+      sourceField: "offerDeadline",
+      type: "offer",
+      title: `${job.company} - Offer Deadline (${job.role})`,
+      getDefaultTimes: () => ({ start: "09:00", end: "10:00" })
+    }
+  ];
+
+  for (const map of mappings) {
+    const jobDateVal = job[map.field];
+    // Use sourceField as the canonical lookup key for deduplication.
+    // $or handles backward compatibility: old events only have eventType set,
+    // new events use sourceField. Without $or, upgrading would create duplicates.
+    let event = await Event.findOne({
+      jobId: job._id,
+      $or: [
+        { sourceField: map.sourceField },
+        { eventType: map.type }
+      ]
+    });
+
+    if (jobDateVal) {
+      // Fix: use UTC-safe date extraction to avoid timezone shifts.
+      // Wrap in new Date() first — Mongoose may return a string for date fields
+      // set via certain API payloads, and .toISOString() only exists on Date.
+      const d = new Date(jobDateVal);
+      const datePart = new Date(d.toISOString().slice(0, 10) + "T00:00:00.000Z");
+      const { start, end } = map.getDefaultTimes(jobDateVal);
+
+      if (event) {
+        let changed = false;
+        if (event.title !== map.title) { event.title = map.title; changed = true; }
+        if (event.company !== job.company) { event.company = job.company; changed = true; }
+        if (new Date(event.date).getTime() !== datePart.getTime()) { event.date = datePart; changed = true; }
+        if (event.startTime !== start) { event.startTime = start; changed = true; }
+        if (event.endTime !== end) { event.endTime = end; changed = true; }
+
+        if (changed) {
+          event.syncStatus = "pending";
+          if (isGCalConnected && event.googleEventId) {
+            try {
+              if (user.calendarSyncUpdates !== false) {
+                await updateGoogleEvent(userId, event.googleEventId, event, user);
+                event.syncStatus = "synced";
+              }
+            } catch (err) {
+              console.error(`[syncJobEvents] GCal update failed for event ${event._id}:`, err.message);
+              event.syncStatus = "failed";
+            }
+          }
+          await event.save();
+        }
+      } else {
+        event = new Event({
+          userId,
+          jobId: job._id,
+          eventType: map.type,
+          source: "job",
+          sourceField: map.sourceField,
+          title: map.title,
+          company: job.company,
+          date: datePart,
+          startTime: start,
+          endTime: end,
+          syncStatus: "pending"
+        });
+
+        if (isGCalConnected && user.calendarAutoCreate !== false) {
+          try {
+            const googleEventId = await createGoogleEvent(userId, event, user);
+            event.googleEventId = googleEventId;
+            event.syncStatus = "synced";
+          } catch (err) {
+            console.error(`[syncJobEvents] GCal create failed for event ${event._id}:`, err.message);
+            event.syncStatus = "failed";
+          }
+        }
+        await event.save();
+      }
+    } else {
+      if (event) {
+        if (isGCalConnected && event.googleEventId && user.calendarSyncCancellations !== false) {
+          try {
+            await deleteGoogleEvent(userId, event.googleEventId);
+          } catch (err) {
+            console.error(`[syncJobEvents] GCal delete failed for event ${event._id}:`, err.message);
+          }
+        }
+        await Event.deleteOne({ _id: event._id });
+      }
+    }
+  }
 };
 

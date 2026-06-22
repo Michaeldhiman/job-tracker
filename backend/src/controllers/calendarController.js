@@ -21,6 +21,7 @@ export const eventSchemaZod = z.object({
   endTime: z.string().regex(/^([0-9]|0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid end time format (HH:MM)"),
   company: z.string().optional().nullable(),
   interviewRound: z.string().optional().nullable(),
+  eventType: z.string().optional().nullable(),
 });
 
 /**
@@ -109,7 +110,7 @@ export const oauthCallback = async (req, res, next) => {
  */
 export const getEvents = async (req, res, next) => {
   try {
-    const events = await Event.find({ userId: req.userId }).sort({ date: -1 });
+    const events = await Event.find({ userId: req.userId }).populate("jobId").sort({ date: -1 });
     res.json({ success: true, events });
   } catch (error) {
     next(error);
@@ -213,6 +214,10 @@ export const updateEvent = async (req, res, next) => {
 /**
  * DELETE /api/calendar/events/:id
  * Deletes an event locally and deletes the matching event from Google Calendar
+ *
+ * CRITICAL FIX (P0): The old code returned early after clearing the job date field,
+ * never deleting the Event document. This caused phantom re-appearing events on reload.
+ * Now we always delete the Event after clearing the job field.
  */
 export const deleteEvent = async (req, res, next) => {
   try {
@@ -222,6 +227,25 @@ export const deleteEvent = async (req, res, next) => {
       return res.status(404).json({ success: false, message: "Event not found" });
     }
 
+    // Clear the originating job date field — always falls through to Event deletion
+    if (event.jobId && (event.sourceField || event.eventType)) {
+      const Job = (await import("../models/Job.js")).default;
+      const job = await Job.findOne({ _id: event.jobId, userId: req.userId });
+      if (job) {
+        const dateField = event.sourceField || ({
+          interview: "interviewDate",
+          followUp: "followUpDate",
+          assessment: "assessmentDeadline",
+          offer: "offerDeadline"
+        })[event.eventType];
+        if (dateField && Object.prototype.hasOwnProperty.call(job.schema.paths, dateField)) {
+          job[dateField] = null;
+          await job.save();
+        }
+      }
+    }
+
+    // Delete from Google Calendar if connected
     const user = await User.findById(req.userId);
     if (user?.googleCalendarConnected && event.googleEventId && user.calendarSyncCancellations !== false) {
       try {
@@ -231,6 +255,7 @@ export const deleteEvent = async (req, res, next) => {
       }
     }
 
+    // Always delete the Event document (P0 fix: never return early)
     await Event.deleteOne({ _id: req.params.id });
     res.json({ success: true });
   } catch (error) {
@@ -329,5 +354,75 @@ export const updateCalendarPreferences = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+/**
+ * POST /api/calendar/backfill
+ * Idempotent backfill — creates Event records for existing Job scheduling fields
+ * that existed before the auto-generation code was added.
+ */
+export const backfillJobEvents = async (req, res, next) => {
+  try {
+    const Job = (await import("../models/Job.js")).default;
+    const { syncJobEvents } = await import("../services/jobService.js");
+
+    const jobs = await Job.find({
+      userId: req.userId,
+      $or: [
+        { interviewDate: { $ne: null } },
+        { followUpDate: { $ne: null } },
+        { assessmentDeadline: { $ne: null } },
+        { offerDeadline: { $ne: null } }
+      ]
+    });
+
+    let processed = 0;
+    for (const job of jobs) {
+      await syncJobEvents(job);
+      processed++;
+    }
+
+    res.json({ success: true, message: `Backfill complete. Processed ${processed} jobs.` });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Non-blocking startup backfill for all users. Called once on server boot.
+ * Idempotent — skips jobs that already have an Event for the same sourceField.
+ */
+export const runStartupBackfill = async () => {
+  try {
+    const Job = (await import("../models/Job.js")).default;
+    const { syncJobEvents } = await import("../services/jobService.js");
+
+    const jobs = await Job.find({
+      $or: [
+        { interviewDate: { $ne: null } },
+        { followUpDate: { $ne: null } },
+        { assessmentDeadline: { $ne: null } },
+        { offerDeadline: { $ne: null } }
+      ]
+    });
+
+    let processed = 0;
+    for (const job of jobs) {
+      // Check for ANY existing event for this job (handles both old + new records).
+      // Without this check, the backfill would create duplicates for jobs that
+      // already had events before the sourceField column was introduced.
+      const hasEvents = await Event.exists({ jobId: job._id });
+      if (!hasEvents) {
+        await syncJobEvents(job);
+        processed++;
+      }
+    }
+
+    if (processed > 0) {
+      console.log(`[Backfill] Calendar sync complete: ${processed} jobs processed.`);
+    }
+  } catch (err) {
+    console.error("[Backfill] Failed:", err.message);
   }
 };

@@ -18,6 +18,14 @@ const startServer = async () => {
       console.log(`[Server] Running on http://localhost:${PORT}`);
       // Start background notification scheduler
       startScheduler();
+
+      // Non-blocking startup backfill — never blocks app availability.
+      // Runs in the background, idempotent across restarts.
+      import("./controllers/calendarController.js").then(({ runStartupBackfill }) => {
+        runStartupBackfill().catch(err => {
+          console.error("[Backfill] runStartupBackfill failed:", err.message);
+        });
+      });
     });
   } catch (error) {
     console.error("[Server] Boot failure:", error);
