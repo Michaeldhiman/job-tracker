@@ -28,7 +28,15 @@ router.get("/", pagination, async (req, res, next) => {
 
     if (company) query.company = new RegExp(company, "i");
     if (role) query.role = new RegExp(role, "i");
-    if (status) query.status = status;
+    if (status) {
+      if (Array.isArray(status)) {
+        query.status = { $in: status };
+      } else if (typeof status === 'string' && status.includes(',')) {
+        query.status = { $in: status.split(',') };
+      } else {
+        query.status = status;
+      }
+    }
     if (priority) query.priority = priority;
     if (location) query.location = new RegExp(location, "i");
 

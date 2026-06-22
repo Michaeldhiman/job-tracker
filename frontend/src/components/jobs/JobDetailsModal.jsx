@@ -19,6 +19,8 @@ const STAGES = [
   { id: 'Rejected', label: 'Rejected', activeClass: 'bg-rose-500 text-white border-rose-500' },
 ];
 
+const ACTIVE_STAGES = STAGES.filter(s => s.id !== 'Rejected');
+
 export default function JobDetailsModal({ isOpen, job, onClose, onSuccess, onEdit, onJobUpdated }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -142,7 +144,7 @@ export default function JobDetailsModal({ isOpen, job, onClose, onSuccess, onEdi
                   )}
 
                   {/* Stage Selector (Tapping to move stage) */}
-                  <div className="bg-surface-elevated/40 border border-border p-4 rounded-xl space-y-3">
+                  <div className="bg-surface-elevated/40 border border-border p-4 rounded-xl space-y-4">
                     <div className="flex justify-between items-center">
                       <h4 className="text-sm font-semibold text-text uppercase tracking-wider flex items-center gap-2">
                         <BarChart2 className="w-4 h-4 text-primary" /> 
@@ -153,26 +155,55 @@ export default function JobDetailsModal({ isOpen, job, onClose, onSuccess, onEdi
                       </span>
                     </div>
                     
-                    {/* Stage Grid - Super easy to tap on Mobile */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {STAGES.map((stage) => {
-                        const isActive = job.status === stage.id;
-                        return (
+                    {job.status === 'Rejected' ? (
+                      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg">
+                        <div className="flex items-center gap-2 text-rose-400 text-sm">
+                          <AlertCircle className="w-5 h-5 shrink-0" />
+                          <span>This application has been marked as Rejected.</span>
+                        </div>
+                        <button
+                          disabled={isUpdating}
+                          onClick={() => handleStageChange('Applied')}
+                          className="w-full sm:w-auto px-4 py-1.5 bg-surface border border-rose-500/30 hover:border-rose-500 text-rose-400 hover:text-rose-300 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer"
+                        >
+                          Restore to Active (Applied)
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Active Stages Selector */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {ACTIVE_STAGES.map((stage) => {
+                            const isActive = job.status === stage.id;
+                            return (
+                              <button
+                                key={stage.id}
+                                disabled={isUpdating}
+                                onClick={() => handleStageChange(stage.id)}
+                                className={`py-2 px-3 rounded-lg text-xs font-semibold border text-center transition-all ${
+                                  isActive 
+                                    ? stage.activeClass + " shadow-md"
+                                    : "border-border bg-background text-text-muted hover:text-text hover:border-primary/50"
+                                } ${isUpdating ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                              >
+                                {stage.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {/* Rejection trigger */}
+                        <div className="flex justify-end pt-1">
                           <button
-                            key={stage.id}
                             disabled={isUpdating}
-                            onClick={() => handleStageChange(stage.id)}
-                            className={`py-2 px-3 rounded-lg text-xs font-semibold border text-center transition-all ${
-                              isActive 
-                                ? stage.activeClass + " shadow-md"
-                                : "border-border bg-background text-text-muted hover:text-text hover:border-primary/50"
-                            } ${isUpdating ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+                            onClick={() => handleStageChange('Rejected')}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-rose-500/20 bg-rose-500/5 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/40 transition-all flex items-center gap-1.5 cursor-pointer"
                           >
-                            {stage.label}
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            Mark as Rejected
                           </button>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Grid of Key Info */}
